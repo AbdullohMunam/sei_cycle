@@ -191,8 +191,10 @@ flutter analyze   # → No issues found ✅
 | Nama | Peran |
 |---|---|
 | **Irsal Fauzan Alfarizi** | Founder & Manajer Umum |
-| **Ristyo Private Ramadan** | Manajer Produksi, Pemasaran & Keuangan |
-| **Noval Putra Pradana** | Manajer Operasional & Packaging |
+| **Fiki Rahmat Dani** | Manajer Keuangan & Strategi Bisnis |
+| **Fredi Irawan** | Manajer Pemasaran & Operasional |
+| **Raphael Gregory Sosiawan** | Manajer Produksi & Lapangan |
+| **Abdulloh Mun'am** | Manajer IT & Digitalisasi |
 
 > Institut Teknologi dan Bisnis Asia Malang — Program P2MW 2025
 
