@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/logbook_screen.dart';
+import '../screens/edukasi_screen.dart';
 import '../screens/notifikasi_screen.dart';
 
 class ResponsiveShell extends StatefulWidget {
@@ -26,6 +27,11 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
       label: 'Logbook',
     ),
     _NavDestination(
+      icon: Icons.school_outlined,
+      activeIcon: Icons.school,
+      label: 'Edukasi',
+    ),
+    _NavDestination(
       icon: Icons.notifications_outlined,
       activeIcon: Icons.notifications,
       label: 'Notifikasi',
@@ -35,6 +41,7 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
   static const _screens = [
     DashboardScreen(),
     LogbookScreen(),
+    EdukasiScreen(),
     NotifikasiScreen(),
   ];
 

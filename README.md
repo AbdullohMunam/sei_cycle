@@ -8,41 +8,15 @@
     <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"/>
     <img src="https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white" alt="Dart"/>
     <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-green" alt="Platform"/>
-    <img src="https://img.shields.io/badge/Theme-Light%20%7C%20Organic-2D6A27" alt="Theme"/>
     <img src="https://img.shields.io/badge/Status-MVP-orange" alt="Status"/>
   </p>
 </div>
 
 ---
 
-## 📸 Screenshots
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="screenshots/Dashboard1-ringkasan.png" width="220" alt="Dashboard – Ringkasan Operasional"/>
-      <br/><sub><b>Dashboard · Ringkasan Operasional</b></sub>
-    </td>
-    <td align="center">
-      <img src="screenshots/dashboard2-nutrisi-aktivitas-omset.png" width="220" alt="Dashboard – Nutrisi · Aktivitas · Omset"/>
-      <br/><sub><b>Dashboard · Aliran Nutrisi & Omset</b></sub>
-    </td>
-    <td align="center">
-      <img src="screenshots/logbook.png" width="220" alt="Logbook Operasional"/>
-      <br/><sub><b>Logbook · Modul Ayam (Form)</b></sub>
-    </td>
-    <td align="center">
-      <img src="screenshots/notifikasi.png" width="220" alt="Notifikasi & Pengingat"/>
-      <br/><sub><b>Notifikasi & Pengingat Otomatis</b></sub>
-    </td>
-  </tr>
-</table>
-
----
-
 ## 🌿 Tentang Proyek
 
-**SeiCycle** adalah aplikasi manajemen pertanian-peternakan berbasis data yang dirancang untuk **Kebun Sei** — sebuah model ekosistem sirkular tertutup yang mengintegrasikan:
+**SeiCycle** adalah aplikasi manajemen pertanian-peternakan berbasis data untuk **Kebun Sei** — ekosistem sirkular tertutup yang mengintegrasikan:
 
 ```
 Limbah Dapur → Maggot BSF → Pakan Lele → Air Kolam
@@ -52,38 +26,90 @@ Tanaman Pangan ← Kascing ← Cacing Tanah ←────┘
 Pakan Ayam → Kotoran Ayam → Media Maggot → (ulang)
 ```
 
-Sistem ini menjamin **zero waste**, **efisiensi pakan 60%**, dan **pupuk mandiri 100%** hanya dari sumber daya yang ada di kebun.
+Zero waste · Efisiensi pakan 60% · Pupuk mandiri 100%
 
 ---
 
 ## ✨ Fitur Utama (MVP)
 
 ### 🏠 Dashboard Terintegrasi
-- **Hero banner** dengan logo Kebun Sei dan info lokasi
-- **Quick stats grid** responsif (2 kolom mobile → 4 kolom desktop):
-  - Total Populasi Ternak: 1.050 ekor
-  - Volume Limbah Terolah: 50 kg/minggu
-  - Total Produksi: 85 telur/hari + 18 kg maggot + 320 kg kascing/bln
-  - Estimasi Nilai Ekonomi: Rp 20 jt/bulan
-- **Diagram aliran nutrisi** — closed-loop system visual
-- **Timeline aktivitas harian** dengan status selesai/belum
-- **Rincian omset bulanan** per komoditas
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/Dashboard1.png" width="200"/>
+      <br/><sub>Ringkasan Operasional & Quick Stats</sub>
+    </td>
+    <td align="center">
+      <img src="screenshots/Dashboard2.png" width="200"/>
+      <br/><sub>Aliran Nutrisi, Aktivitas Harian & Omset</sub>
+    </td>
+  </tr>
+</table>
+</div>
+
+- **Hero banner** dengan logo Kebun Sei, lokasi & luas lahan
+- **Quick stats grid** responsif: 1.050 ekor ternak · 50 kg limbah/minggu · 85 telur/hari · Rp 20 jt/bln
+- **Diagram aliran nutrisi** — closed-loop system visual (Limbah → Maggot → Lele → Cacing → Tanaman)
+- **Timeline aktivitas harian** dengan status selesai/belum per jam
+- **Rincian omset bulanan** per komoditas dengan progress bar berwarna
+
+---
 
 ### 📒 Logbook Operasional (5 Modul)
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/Logbook1.png" width="200"/>
+      <br/><sub>Modul Ayam – Input Harian & Nutrisi</sub>
+    </td>
+    <td align="center">
+      <img src="screenshots/Loogbook2.png" width="200"/>
+      <br/><sub>Modul Tanaman – Data Tanam & Pertumbuhan</sub>
+    </td>
+  </tr>
+</table>
+</div>
+
 | Modul | Fitur Utama |
 |---|---|
 | 🐔 **Ayam** | Populasi, konsumsi pakan, produksi telur, mortalitas slider, catatan kesehatan |
 | 🐛 **Maggot BSF** | Volume limbah, fase larva slider + badge (Instar/Prepupa/Panen), est. panen |
 | 🪱 **Cacing** | Bibit, kelembaban, jadwal pakan, est. kascing |
-| 🌿 **Tanaman** | Jenis, tanggal tanam, tinggi/daun, jadwal pemupukan |
-| 🐟 **Lele** | Tebar benih, survival rate, pakan maggot, pH & suhu kolam, bobot rata-rata |
+| 🌿 **Tanaman** | Jenis, blok, tanggal tanam, tinggi/daun, pupuk kascing, jadwal berikutnya |
+| 🐟 **Lele** | Tebar benih, survival rate, pakan maggot, pH & suhu kolam |
 
-Form otomatis **2 kolom** di layar lebar, **1 kolom** di mobile.
+Form otomatis **2 kolom** di layar lebar, **1 kolom** di mobile. Tombol **Simpan Catatan** & **Lihat Riwayat** di setiap modul.
+
+---
+
+### 📚 Edukasi & Tutorial
+
+<div align="center">
+  <img src="screenshots/Edukasi.png" width="200"/>
+</div>
+
+Feed artikel dan video tutorial seputar operasional Kebun Sei:
+- 🔍 **Search bar** real-time (filter judul + konten)
+- 🏷️ **Filter chips**: Semua · Maggot BSF · Cacing Tanah · Ayam Kampung · Lele · Tanaman
+- ▶️ **Video posts** dengan play button overlay di thumbnail
+- 🖼️ Thumbnail foto nyata per topik (bukan placeholder)
+- 📱 Single-column di mobile · 2-column grid di desktop
+
+---
 
 ### 🔔 Notifikasi & Pengingat
-- **5 Jadwal Pakan** (cacing, ayam pagi/sore, lele pagi/sore)
-- **2 Peringatan** (overstock limbah, kelembaban cacing rendah)
-- **3 Estimasi Panen Optimal** (maggot, cacing, target telur)
+
+<div align="center">
+  <img src="screenshots/Notifikasi.png" width="200"/>
+</div>
+
+- **5 Jadwal Pakan** — cacing, ayam pagi/sore, lele pagi/sore
+- **2 Peringatan** — overstock limbah, kelembaban cacing rendah
+- **3 Estimasi Panen Optimal** — maggot, cacing, target telur harian
 
 ---
 
@@ -91,7 +117,7 @@ Form otomatis **2 kolom** di layar lebar, **1 kolom** di mobile.
 
 | Layar | Layout |
 |---|---|
-| **Mobile** `< 768px` | Bottom Navigation Bar + single/double column |
+| **Mobile** `< 768px` | Bottom Navigation Bar (4 tab) + single/double column |
 | **Desktop/Web** `≥ 768px` | Side Navigation (240px sidebar) + expanding grid |
 
 ---
@@ -104,8 +130,8 @@ Form otomatis **2 kolom** di layar lebar, **1 kolom** di mobile.
 | State | `StatefulWidget` + `setState` |
 | Navigation | `LayoutBuilder` → `NavigationBar` / Custom Sidebar |
 | Routing | Tab-based (`DefaultTabController`) |
-| Assets | Material Icons + logo PNG lokal |
-| Platform | Android, iOS, Web (Flutter Web) |
+| Assets | Material Icons + PNG lokal |
+| Platform | Android, iOS, Web |
 
 ---
 
@@ -116,8 +142,7 @@ Form otomatis **2 kolom** di layar lebar, **1 kolom** di mobile.
 | Primary Green | `#2D6A27` (dari logo Kebun Sei) |
 | Background | `#F7F5F0` — off-white / krem organik |
 | Card | `#FFFFFF` + `elevation: 2` |
-| Border radius | `16px` (mencerminkan sistem sirkular) |
-| Typography | Material `TextTheme` — clean sans-serif |
+| Border radius | `16px` |
 | Status colors | Success `#10B981` · Warning `#F59E0B` · Info `#3B82F6` |
 
 ---
@@ -126,69 +151,38 @@ Form otomatis **2 kolom** di layar lebar, **1 kolom** di mobile.
 
 ```
 lib/
-├── main.dart                       # Entry point – SeiCycleApp
-├── theme/
-│   └── app_theme.dart              # AppColors, AppTheme.lightTheme
+├── main.dart
+├── theme/app_theme.dart              # AppColors, ThemeData
 ├── models/
-│   └── app_data.dart               # Static dummy data (dari dokumen bisnis)
+│   ├── app_data.dart                 # Data dashboard & notifikasi
+│   └── edukasi_data.dart             # Data 8 post edukasi
 ├── screens/
-│   ├── dashboard_screen.dart       # Dashboard dengan stats, flow, timeline, omset
-│   ├── logbook_screen.dart         # 5-modul TabBar + form lengkap Ayam & Maggot
-│   └── notifikasi_screen.dart      # Alert list dengan tipe info/warning/success
+│   ├── dashboard_screen.dart
+│   ├── logbook_screen.dart           # 5-modul TabBar
+│   ├── edukasi_screen.dart           # Search, filter, feed responsif
+│   └── notifikasi_screen.dart
 └── widgets/
-    ├── common_widgets.dart         # StatCard, NutrientFlowCard, AlertTile, SectionHeader
-    └── responsive_shell.dart       # Layout switch mobile ↔ desktop di 768px
+    ├── common_widgets.dart           # StatCard, NutrientFlowCard, AlertTile
+    └── responsive_shell.dart         # 4-tab nav: mobile ↔ desktop
 ```
 
 ---
 
 ## 🚀 Cara Menjalankan
 
-### Prasyarat
-- Flutter SDK `≥ 3.10.x` — [instalasi](https://docs.flutter.dev/get-started/install)
-- Dart SDK `≥ 3.x`
-- Device: Android emulator / iOS simulator / Chrome / Linux desktop
-
-### Langkah
 ```bash
-# 1. Clone / masuk ke direktori project
-cd sei_cycle
-
-# 2. Install dependencies
 flutter pub get
 
-# 3. Jalankan di browser (Web)
-flutter run -d chrome
-
-# 4. Jalankan di web server (akses dari LAN)
-flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080
-
-# 5. Jalankan di Android / iOS emulator
-flutter run
-
-# 6. Build web production
-flutter build web
+flutter run -d chrome           # Web browser
+flutter run -d web-server \
+  --web-hostname=0.0.0.0 \
+  --web-port=8080               # Web server (LAN)
+flutter run                     # Android / iOS emulator
 ```
 
-### Analisis Kode
 ```bash
-flutter analyze     # Static analysis – seharusnya: No issues found
-flutter test        # Unit / widget tests
+flutter analyze   # → No issues found ✅
 ```
-
----
-
-## 📊 Data Dummy (dari Dokumen Bisnis)
-
-Data yang ditampilkan di app diambil dari dokumen rencana bisnis aktual Kebun Sei:
-
-| Komoditas | Data |
-|---|---|
-| Ayam kampung & petelur | 150 ekor, target 85 telur/hari, pakan 50 g/ekor |
-| Lele (kolam bioflok) | 800 ekor tebar, SR 89%, pakan 5 kg maggot/hari |
-| Maggot BSF | Siklus 14 hari, estimasi panen 18–20 kg/batch, 5 rak aktif |
-| Cacing ANC | 10 kg bibit, kelembaban 70%, pakan 3×/minggu |
-| Omset bulanan | Rp 20 jt/bulan (proyeksi Rp 96 jt/periode Jun–Ags 2026) |
 
 ---
 
@@ -197,17 +191,13 @@ Data yang ditampilkan di app diambil dari dokumen rencana bisnis aktual Kebun Se
 | Nama | Peran |
 |---|---|
 | **Irsal Fauzan Alfarizi** | Founder & Manajer Umum |
+| **Ristyo Private Ramadan** | Manajer Produksi, Pemasaran & Keuangan |
+| **Noval Putra Pradana** | Manajer Operasional & Packaging |
 
-> Institut Teknologi dan Bisnis Asia Malang — Program P2MW 2026
-
----
-
-## 📄 Lisensi
-
-Proyek ini bersifat privat dan dikembangkan untuk keperluan internal **Kebun Sei** dalam rangka Program Pembinaan Mahasiswa Wirausaha (P2MW) 2026.
+> Institut Teknologi dan Bisnis Asia Malang — Program P2MW 2025
 
 ---
 
 <div align="center">
-  <sub>Dibuat dengan ❤️ untuk pertanian berkelanjutan &nbsp;·&nbsp; Kebun Sei © 2026</sub>
+  <sub>Dibuat dengan ❤️ untuk pertanian berkelanjutan &nbsp;·&nbsp; Kebun Sei © 2025</sub>
 </div>
