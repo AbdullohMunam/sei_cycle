@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+serviceAccountKey.json
+service-account.json
+firebase-service-account.json
+*-firebase-adminsdk-*.json
+google-services.json
+credentials/
+secrets/

@@ -6,36 +6,35 @@ const {
 } = require('../utils/firestore');
 const { errorResponse, successResponse } = require('../utils/response');
 
-const COLLECTION_NAME = 'inventory_items';
-const REQUIRED_STRING_FIELDS = ['item_name', 'category', 'unit'];
-const REQUIRED_NUMBER_FIELDS = ['stock', 'minimum_stock'];
+const COLLECTION_NAME = 'education_contents';
+const ALLOWED_TYPES = ['article', 'video', 'sop'];
+const REQUIRED_FIELDS = ['title', 'type', 'category', 'description'];
 const EDITABLE_FIELDS = [
-  ...REQUIRED_STRING_FIELDS,
-  ...REQUIRED_NUMBER_FIELDS,
+  ...REQUIRED_FIELDS,
+  'content_url',
   'module_id',
-  'location',
+  'is_published',
 ];
 
-const mapInventoryItem = (document) => {
+const mapContent = (document) => {
   const data = document.data();
 
   return {
-    item_id: data.item_id || document.id,
-    item_name: data.item_name || '',
+    content_id: data.content_id || document.id,
+    title: data.title || '',
+    type: data.type || '',
     category: data.category || '',
-    stock: data.stock ?? 0,
-    unit: data.unit || '',
-    minimum_stock: data.minimum_stock ?? 0,
-    is_low_stock: data.is_low_stock ?? false,
+    description: data.description || '',
+    content_url: data.content_url || '',
     module_id: data.module_id || '',
-    location: data.location || '',
+    is_published: data.is_published ?? false,
     created_at: serializeTimestamp(data.created_at),
     updated_at: serializeTimestamp(data.updated_at),
   };
 };
 
-const validateInventory = (body, isPartial = false) => {
-  for (const field of REQUIRED_STRING_FIELDS) {
+const validateContent = (body, isPartial = false) => {
+  for (const field of REQUIRED_FIELDS) {
     if (
       (!isPartial || Object.prototype.hasOwnProperty.call(body, field)) &&
       (typeof body[field] !== 'string' || body[field].trim().length === 0)
@@ -44,15 +43,15 @@ const validateInventory = (body, isPartial = false) => {
     }
   }
 
-  for (const field of REQUIRED_NUMBER_FIELDS) {
-    if (
-      (!isPartial || Object.prototype.hasOwnProperty.call(body, field)) &&
-      (typeof body[field] !== 'number' ||
-        !Number.isFinite(body[field]) ||
-        body[field] < 0)
-    ) {
-      return `Field ${field} harus berupa angka nol atau lebih`;
-    }
+  if (body.type !== undefined && !ALLOWED_TYPES.includes(body.type)) {
+    return 'Field type hanya boleh article, video, atau sop';
+  }
+
+  if (
+    body.is_published !== undefined &&
+    typeof body.is_published !== 'boolean'
+  ) {
+    return 'Field is_published harus berupa boolean';
   }
 
   return null;
@@ -60,34 +59,51 @@ const validateInventory = (body, isPartial = false) => {
 
 const buildUpdate = (body) =>
   EDITABLE_FIELDS.reduce((result, field) => {
-    if (!Object.prototype.hasOwnProperty.call(body, field)) {
-      return result;
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      result[field] =
+        typeof body[field] === 'string' ? body[field].trim() : body[field];
     }
-
-    result[field] =
-      typeof body[field] === 'string' ? body[field].trim() : body[field];
     return result;
   }, {});
 
-const getInventory = async (req, res, next) => {
+const getContents = async (req, res, next) => {
   if (!db) {
     return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, [], 503);
   }
 
   try {
     const snapshot = await db.collection(COLLECTION_NAME).get();
-    const inventory = snapshot.docs
-      .map(mapInventoryItem)
+    const {
+      category,
+      is_published: publishedQuery,
+      module_id: moduleId,
+      type,
+    } = req.query;
+    const published =
+      publishedQuery === undefined ? null : publishedQuery === 'true';
+    const contents = snapshot.docs
+      .map(mapContent)
+      .filter(
+        (content) =>
+          (!type || content.type === type) &&
+          (!category || content.category === category) &&
+          (!moduleId || content.module_id === moduleId) &&
+          (published === null || content.is_published === published),
+      )
       .sort(sortByCreatedAtDescending);
 
-    return successResponse(res, 'Data inventory berhasil diambil', inventory);
+    return successResponse(
+      res,
+      'Data edukasi berhasil diambil',
+      contents,
+    );
   } catch (error) {
-    error.message = 'Gagal mengambil data inventory';
+    error.message = 'Gagal mengambil data edukasi';
     return next(error);
   }
 };
 
-const getInventoryItemById = async (req, res, next) => {
+const getContentById = async (req, res, next) => {
   if (!db) {
     return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, [], 503);
   }
@@ -99,27 +115,27 @@ const getInventoryItemById = async (req, res, next) => {
       .get();
 
     if (!document.exists) {
-      return errorResponse(res, 'Item inventory tidak ditemukan', null, 404);
+      return errorResponse(res, 'Konten edukasi tidak ditemukan', null, 404);
     }
 
     return successResponse(
       res,
-      'Detail item inventory berhasil diambil',
-      mapInventoryItem(document),
+      'Detail edukasi berhasil diambil',
+      mapContent(document),
     );
   } catch (error) {
-    error.message = 'Gagal mengambil detail item inventory';
+    error.message = 'Gagal mengambil detail edukasi';
     return next(error);
   }
 };
 
-const createInventoryItem = async (req, res, next) => {
+const createContent = async (req, res, next) => {
   if (!db) {
     return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, [], 503);
   }
 
   const body = req.body || {};
-  const validationMessage = validateInventory(body);
+  const validationMessage = validateContent(body);
   if (validationMessage) {
     return errorResponse(res, validationMessage, null, 400);
   }
@@ -127,46 +143,45 @@ const createInventoryItem = async (req, res, next) => {
   try {
     const document = db.collection(COLLECTION_NAME).doc();
     const timestamp = admin.firestore.Timestamp.now();
-    const inventoryItem = {
-      item_id: document.id,
-      item_name: body.item_name.trim(),
+    const content = {
+      content_id: document.id,
+      title: body.title.trim(),
+      type: body.type.trim(),
       category: body.category.trim(),
-      stock: body.stock,
-      unit: body.unit.trim(),
-      minimum_stock: body.minimum_stock,
-      is_low_stock: body.stock <= body.minimum_stock,
+      description: body.description.trim(),
+      content_url:
+        typeof body.content_url === 'string' ? body.content_url.trim() : '',
       module_id:
         typeof body.module_id === 'string' ? body.module_id.trim() : '',
-      location: typeof body.location === 'string' ? body.location.trim() : '',
+      is_published: body.is_published ?? false,
       created_at: timestamp,
       updated_at: timestamp,
     };
 
-    await document.set(inventoryItem);
-
+    await document.set(content);
     return successResponse(
       res,
-      'Item inventory berhasil ditambahkan',
+      'Konten edukasi berhasil ditambahkan',
       {
-        ...inventoryItem,
+        ...content,
         created_at: serializeTimestamp(timestamp),
         updated_at: serializeTimestamp(timestamp),
       },
       201,
     );
   } catch (error) {
-    error.message = 'Gagal menambahkan item inventory';
+    error.message = 'Gagal menambahkan konten edukasi';
     return next(error);
   }
 };
 
-const updateInventoryItem = async (req, res, next) => {
+const updateContent = async (req, res, next) => {
   if (!db) {
     return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, [], 503);
   }
 
   const body = req.body || {};
-  const validationMessage = validateInventory(body, true);
+  const validationMessage = validateContent(body, true);
   if (validationMessage) {
     return errorResponse(res, validationMessage, null, 400);
   }
@@ -181,31 +196,25 @@ const updateInventoryItem = async (req, res, next) => {
     const snapshot = await document.get();
 
     if (!snapshot.exists) {
-      return errorResponse(res, 'Item inventory tidak ditemukan', null, 404);
+      return errorResponse(res, 'Konten edukasi tidak ditemukan', null, 404);
     }
 
-    const current = snapshot.data();
-    const stock = updates.stock ?? current.stock ?? 0;
-    const minimumStock =
-      updates.minimum_stock ?? current.minimum_stock ?? 0;
-
-    updates.is_low_stock = stock <= minimumStock;
     updates.updated_at = admin.firestore.Timestamp.now();
     await document.update(updates);
     const updatedDocument = await document.get();
 
     return successResponse(
       res,
-      'Item inventory berhasil diperbarui',
-      mapInventoryItem(updatedDocument),
+      'Konten edukasi berhasil diperbarui',
+      mapContent(updatedDocument),
     );
   } catch (error) {
-    error.message = 'Gagal memperbarui item inventory';
+    error.message = 'Gagal memperbarui konten edukasi';
     return next(error);
   }
 };
 
-const deleteInventoryItem = async (req, res, next) => {
+const deleteContent = async (req, res, next) => {
   if (!db) {
     return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, [], 503);
   }
@@ -215,23 +224,23 @@ const deleteInventoryItem = async (req, res, next) => {
     const snapshot = await document.get();
 
     if (!snapshot.exists) {
-      return errorResponse(res, 'Item inventory tidak ditemukan', null, 404);
+      return errorResponse(res, 'Konten edukasi tidak ditemukan', null, 404);
     }
 
     await document.delete();
-    return successResponse(res, 'Item inventory berhasil dihapus', {
-      item_id: req.params.id,
+    return successResponse(res, 'Konten edukasi berhasil dihapus', {
+      content_id: req.params.id,
     });
   } catch (error) {
-    error.message = 'Gagal menghapus item inventory';
+    error.message = 'Gagal menghapus konten edukasi';
     return next(error);
   }
 };
 
 module.exports = {
-  createInventoryItem,
-  deleteInventoryItem,
-  getInventory,
-  getInventoryItemById,
-  updateInventoryItem,
+  createContent,
+  deleteContent,
+  getContentById,
+  getContents,
+  updateContent,
 };

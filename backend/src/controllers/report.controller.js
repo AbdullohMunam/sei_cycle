@@ -3,22 +3,18 @@ const { FIRESTORE_CONNECTION_MESSAGE } = require('../utils/firestore');
 const { getOperationalSummary } = require('../utils/operationalSummary');
 const { errorResponse, successResponse } = require('../utils/response');
 
-const getDashboardSummary = async (req, res, next) => {
+const getReportSummary = async (req, res, next) => {
   if (!db) {
     return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, [], 503);
   }
 
   try {
-    const summary = await getOperationalSummary(db, true);
-    return successResponse(
-      res,
-      'Ringkasan dashboard berhasil diambil',
-      summary,
-    );
+    const summary = await getOperationalSummary(db);
+    return successResponse(res, 'Ringkasan laporan berhasil diambil', summary);
   } catch (error) {
-    error.message = 'Gagal mengambil ringkasan dashboard';
+    error.message = 'Gagal mengambil ringkasan laporan';
     return next(error);
   }
 };
 
-module.exports = { getDashboardSummary };
+module.exports = { getReportSummary };

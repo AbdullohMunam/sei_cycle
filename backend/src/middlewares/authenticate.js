@@ -4,7 +4,7 @@ const { errorResponse } = require('../utils/response');
 
 const authenticate = async (req, res, next) => {
   if (!db) {
-    return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, null, 503);
+    return errorResponse(res, FIRESTORE_CONNECTION_MESSAGE, [], 503);
   }
 
   const authorizationHeader = req.headers.authorization || '';
