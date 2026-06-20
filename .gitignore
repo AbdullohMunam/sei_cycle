@@ -208,6 +208,7 @@ functions/node_modules/
 
 backend/.env
 backend/.env.*
+!backend/.env.example
 functions/.env
 functions/.env.*
 

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "965319862638",
+    "project_id": "seicycle-kebun-sei",
+    "storage_bucket": "seicycle-kebun-sei.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965319862638:android:0171fb543344d4907a797f",
+        "android_client_info": {
+          "package_name": "id.seicycle.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "965319862638-l1fs4aojt18o8ga53f8o02ca82oi5qui.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA63XIrPCHczYkyVL5bR2oZHJCsduyjTjY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "965319862638-l1fs4aojt18o8ga53f8o02ca82oi5qui.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
