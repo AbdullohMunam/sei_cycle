@@ -1,3 +1,37 @@
+# ERD SeiCycle
+
+## Deskripsi
+
+SeiCycle adalah aplikasi operasional Kebun Sei untuk mendukung pencatatan, monitoring, analisis, edukasi, dan pengambilan keputusan pada sistem pertanian dan peternakan terintegrasi berbasis ekonomi sirkular.
+
+ERD ini digunakan sebagai rancangan konseptual database. Implementasi database utama menggunakan Firebase Authentication, Cloud Firestore, Firebase Storage, dan Firebase Cloud Messaging.
+
+## Entitas Utama
+
+1. Users
+2. User Devices
+3. Farm Modules
+4. Production Cycles
+5. Operational Logs
+6. Production Results
+7. Inventory Items
+8. Inventory Transactions
+9. Stock Alerts
+10. Schedules
+11. Notifications
+12. Education Materials
+13. Finance Transactions
+14. Circular Flows
+15. Reports
+16. AI Recommendations
+
+## Catatan
+
+Tabel `AI_RECOMMENDATIONS` merupakan fitur tahap lanjutan. Fitur ini digunakan untuk prediksi panen, evaluasi produktivitas, dan rekomendasi berbasis data setelah modul utama stabil.
+
+## Diagram ERD
+
+```mermaid
 erDiagram
     USERS ||--o{ USER_DEVICES : owns
     USERS ||--o{ OPERATIONAL_LOGS : creates
