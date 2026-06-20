@@ -1,10 +1,12 @@
 const express = require('express');
 
 const { getCurrentUser } = require('../controllers/user.controller');
-const { authenticate } = require('../middlewares/authenticate');
+const {
+  verifyFirebaseToken,
+} = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
-router.get('/me', authenticate, getCurrentUser);
+router.get('/me', verifyFirebaseToken, getCurrentUser);
 
 module.exports = router;

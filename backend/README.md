@@ -109,8 +109,32 @@ Timestamp Firestore dikirim sebagai ISO-8601 agar mudah diparse menjadi
 | GET | `/api/v1/farm-modules/:id` | Detail modul |
 | GET | `/api/v1/dashboard/summary` | Ringkasan dashboard terintegrasi |
 
-`GET /api/v1/users/me` membutuhkan header
-`Authorization: Bearer <firebase-id-token>`.
+#### Profil user terautentikasi
+
+`GET /api/v1/users/me` dilindungi Firebase Authentication dan wajib menerima
+Firebase ID token:
+
+```http
+Authorization: Bearer <firebase_id_token>
+```
+
+Contoh curl:
+
+```bash
+curl http://localhost:5000/api/v1/users/me \
+  -H "Authorization: Bearer FIREBASE_ID_TOKEN"
+```
+
+Di Flutter, token diperoleh dari user yang sudah login melalui Firebase Auth:
+
+```dart
+final user = FirebaseAuth.instance.currentUser;
+final idToken = await user?.getIdToken();
+```
+
+Kirim `idToken` tersebut sebagai Bearer token pada request backend. Jika profil
+`users/{uid}` belum tersedia di Firestore, endpoint tetap mengembalikan HTTP
+200 dengan data dasar dari Firebase Authentication.
 
 ### Logbook
 
