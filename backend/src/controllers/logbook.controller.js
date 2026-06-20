@@ -14,30 +14,41 @@ const REQUIRED_FIELDS = [
   'created_by',
 ];
 const EDITABLE_FIELDS = [
-  ...REQUIRED_FIELDS,
-  'date',
+  'module_id',
+  'activity_type',
+  'description',
   'quantity',
   'unit',
   'notes',
 ];
+const EDITABLE_REQUIRED_STRING_FIELDS = [
+  'module_id',
+  'activity_type',
+  'description',
+];
 
 const mapLogbook = (document) => {
   const data = document.data();
-  const createdAt = serializeTimestamp(data.created_at);
 
   return {
     logbook_id: data.logbook_id || document.id,
     module_id: data.module_id || '',
     activity_type: data.activity_type || '',
     description: data.description || '',
-    date: data.date || data.activity_date || createdAt?.slice(0, 10) || '',
     quantity: data.quantity ?? null,
     unit: data.unit || '',
     notes: data.notes || '',
     created_by: data.created_by || '',
-    created_at: createdAt,
+    created_at: serializeTimestamp(data.created_at),
     updated_at: serializeTimestamp(data.updated_at),
   };
+};
+
+const getLogbookDate = (document) => {
+  const data = document.data();
+  const createdAt = serializeTimestamp(data.created_at);
+
+  return data.date || data.activity_date || createdAt?.slice(0, 10) || '';
 };
 
 const getMissingField = (body) =>
@@ -47,7 +58,7 @@ const getMissingField = (body) =>
   );
 
 const validateEditableValues = (body) => {
-  const emptyRequiredField = REQUIRED_FIELDS.find(
+  const emptyRequiredField = EDITABLE_REQUIRED_STRING_FIELDS.find(
     (field) =>
       Object.prototype.hasOwnProperty.call(body, field) &&
       (typeof body[field] !== 'string' || body[field].trim().length === 0),
@@ -55,14 +66,6 @@ const validateEditableValues = (body) => {
 
   if (emptyRequiredField) {
     return `Field ${emptyRequiredField} wajib diisi`;
-  }
-
-  if (
-    body.date !== undefined &&
-    (typeof body.date !== 'string' ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(body.date))
-  ) {
-    return 'Field date harus berformat YYYY-MM-DD';
   }
 
   if (
@@ -94,14 +97,24 @@ const getLogbooks = async (req, res, next) => {
 
   try {
     const snapshot = await db.collection(COLLECTION_NAME).get();
-    const { date, module_id: moduleId } = req.query;
+    const {
+      activity_type: activityType,
+      date,
+      module_id: moduleId,
+    } = req.query;
     const logbooks = snapshot.docs
-      .map(mapLogbook)
       .filter(
-        (logbook) =>
-          (!moduleId || logbook.module_id === moduleId) &&
-          (!date || logbook.date === date),
+        (document) => {
+          const data = document.data();
+
+          return (
+            (!moduleId || data.module_id === moduleId) &&
+            (!activityType || data.activity_type === activityType) &&
+            (!date || getLogbookDate(document) === date)
+          );
+        },
       )
+      .map(mapLogbook)
       .sort(sortByCreatedAtDescending);
 
     return successResponse(res, 'Data logbook berhasil diambil', logbooks);
@@ -167,10 +180,6 @@ const createLogbook = async (req, res, next) => {
       module_id: body.module_id.trim(),
       activity_type: body.activity_type.trim(),
       description: body.description.trim(),
-      date:
-        typeof body.date === 'string'
-          ? body.date
-          : timestamp.toDate().toISOString().slice(0, 10),
       quantity: body.quantity ?? null,
       unit: typeof body.unit === 'string' ? body.unit.trim() : '',
       notes: typeof body.notes === 'string' ? body.notes.trim() : '',

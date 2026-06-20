@@ -119,18 +119,31 @@ Timestamp Firestore dikirim sebagai ISO-8601 agar mudah diparse menjadi
 | GET | `/api/v1/logbooks` | Daftar logbook |
 | GET | `/api/v1/logbooks?module_id=module_ayam` | Filter modul |
 | GET | `/api/v1/logbooks?date=2026-06-20` | Filter tanggal |
+| GET | `/api/v1/logbooks?activity_type=pemberian_pakan` | Filter aktivitas |
 | GET | `/api/v1/logbooks/:id` | Detail logbook |
 | POST | `/api/v1/logbooks` | Tambah logbook |
 | PATCH | `/api/v1/logbooks/:id` | Ubah field yang dikirim |
 | DELETE | `/api/v1/logbooks/:id` | Hapus logbook |
 
 Field wajib POST: `module_id`, `activity_type`, `description`, `created_by`.
-Field `date` opsional dan default ke tanggal saat data dibuat.
+Filter `date` menggunakan tanggal `created_at` atau field tanggal dari data
+logbook lama. Field PATCH yang diizinkan: `module_id`, `activity_type`,
+`description`, `quantity`, `unit`, dan `notes`.
 
 ```bash
 curl -X POST http://localhost:5000/api/v1/logbooks \
   -H "Content-Type: application/json" \
-  -d '{"module_id":"module_ayam","activity_type":"pemberian_pakan","description":"Pakan pagi","date":"2026-06-20","quantity":5,"unit":"kg","created_by":"firebase_uid"}'
+  -d '{"module_id":"module_ayam","activity_type":"pemberian_pakan","description":"Pakan pagi","quantity":5,"unit":"kg","created_by":"firebase_uid"}'
+
+curl http://localhost:5000/api/v1/logbooks/LOGBOOK_ID
+curl "http://localhost:5000/api/v1/logbooks?module_id=module_ayam"
+curl "http://localhost:5000/api/v1/logbooks?date=2026-06-20"
+
+curl -X PATCH http://localhost:5000/api/v1/logbooks/LOGBOOK_ID \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Pakan pagi diperbarui","quantity":6}'
+
+curl -X DELETE http://localhost:5000/api/v1/logbooks/LOGBOOK_ID
 ```
 
 ### Inventory
