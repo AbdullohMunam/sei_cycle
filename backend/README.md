@@ -267,6 +267,16 @@ curl -X POST http://localhost:5000/api/v1/education \
 
 ### Contoh dashboard/report summary
 
+```bash
+curl http://localhost:5000/api/v1/dashboard/summary
+curl "http://localhost:5000/api/v1/dashboard/summary?date=2026-06-20"
+curl http://localhost:5000/api/v1/reports/summary
+```
+
+Query `date` pada dashboard bersifat opsional dan harus berformat
+`YYYY-MM-DD`. Tanpa query, backend menggunakan tanggal lokal server untuk
+menghitung `today_logbooks` dan `today_schedules`.
+
 ```json
 {
   "success": true,
@@ -280,7 +290,9 @@ curl -X POST http://localhost:5000/api/v1/education \
     "total_income": 5000000,
     "total_expense": 2500000,
     "profit": 2500000,
-    "active_modules": 5
+    "active_modules": 5,
+    "today_logbooks": 3,
+    "today_schedules": 2
   }
 }
 ```
@@ -303,6 +315,7 @@ curl http://localhost:5000/api/v1/finance/summary
 curl http://localhost:5000/api/v1/education
 curl http://localhost:5000/api/v1/reports/summary
 curl http://localhost:5000/api/v1/dashboard/summary
+curl "http://localhost:5000/api/v1/dashboard/summary?date=2026-06-20"
 ```
 
 Contoh PATCH dan DELETE:
