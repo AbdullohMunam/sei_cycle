@@ -158,11 +158,21 @@ curl -X DELETE http://localhost:5000/api/v1/logbooks/LOGBOOK_ID
 
 Field wajib POST: `item_name`, `category`, `stock`, `unit`, `minimum_stock`.
 `is_low_stock` selalu dihitung ulang dari `stock <= minimum_stock`.
+Field PATCH yang diizinkan: `item_name`, `category`, `stock`, `unit`, dan
+`minimum_stock`.
 
 ```bash
 curl -X POST http://localhost:5000/api/v1/inventory \
   -H "Content-Type: application/json" \
   -d '{"item_name":"Pakan Ayam","category":"pakan","stock":20,"unit":"kg","minimum_stock":5}'
+
+curl http://localhost:5000/api/v1/inventory/ITEM_ID
+
+curl -X PATCH http://localhost:5000/api/v1/inventory/ITEM_ID \
+  -H "Content-Type: application/json" \
+  -d '{"stock":4,"minimum_stock":5}'
+
+curl -X DELETE http://localhost:5000/api/v1/inventory/ITEM_ID
 ```
 
 ### Kalender operasional

@@ -12,8 +12,6 @@ const REQUIRED_NUMBER_FIELDS = ['stock', 'minimum_stock'];
 const EDITABLE_FIELDS = [
   ...REQUIRED_STRING_FIELDS,
   ...REQUIRED_NUMBER_FIELDS,
-  'module_id',
-  'location',
 ];
 
 const mapInventoryItem = (document) => {
@@ -27,8 +25,6 @@ const mapInventoryItem = (document) => {
     unit: data.unit || '',
     minimum_stock: data.minimum_stock ?? 0,
     is_low_stock: data.is_low_stock ?? false,
-    module_id: data.module_id || '',
-    location: data.location || '',
     created_at: serializeTimestamp(data.created_at),
     updated_at: serializeTimestamp(data.updated_at),
   };
@@ -135,9 +131,6 @@ const createInventoryItem = async (req, res, next) => {
       unit: body.unit.trim(),
       minimum_stock: body.minimum_stock,
       is_low_stock: body.stock <= body.minimum_stock,
-      module_id:
-        typeof body.module_id === 'string' ? body.module_id.trim() : '',
-      location: typeof body.location === 'string' ? body.location.trim() : '',
       created_at: timestamp,
       updated_at: timestamp,
     };
