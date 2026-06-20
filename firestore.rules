@@ -1,0 +1,116 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function activeUser() {
+      return signedIn() && currentUser().data.is_active == true;
+    }
+
+    function hasRole(role) {
+      return activeUser() && currentUser().data.role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isOperator() {
+      return hasRole('operator');
+    }
+
+    function canManageOperations() {
+      return isAdmin() || isOperator();
+    }
+
+    match /users/{uid} {
+      allow create: if (
+        signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'mitra'
+        && request.resource.data.is_active == true
+      ) || isAdmin();
+
+      allow read: if signedIn() && (
+        request.auth.uid == uid || isAdmin()
+      );
+
+      allow update: if isAdmin() || (
+        signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'uid',
+          'name',
+          'email',
+          'photo_url',
+          'updated_at'
+        ])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    match /farm_modules/{moduleId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /logbooks/{logbookId} {
+      allow read: if activeUser();
+      allow create: if canManageOperations()
+        && request.resource.data.id == logbookId
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.is_deleted == false;
+      allow update: if canManageOperations()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.created_by == resource.data.created_by;
+      allow delete: if isAdmin();
+    }
+
+    match /inventory_items/{itemId} {
+      allow read: if activeUser();
+      allow create: if canManageOperations()
+        && request.resource.data.id == itemId
+        && request.resource.data.created_by == request.auth.uid;
+      allow update: if canManageOperations()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.created_by == resource.data.created_by;
+      allow delete: if isAdmin();
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if activeUser();
+      allow create: if canManageOperations()
+        && request.resource.data.id == scheduleId
+        && request.resource.data.created_by == request.auth.uid;
+      allow update: if canManageOperations()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.created_by == resource.data.created_by;
+      allow delete: if isAdmin();
+    }
+
+    match /education_contents/{contentId} {
+      allow read: if activeUser() && (
+        resource.data.is_published == true || isAdmin()
+      );
+      allow write: if isAdmin();
+    }
+
+    match /finance_records/{recordId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

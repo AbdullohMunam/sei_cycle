@@ -1,21 +1,13 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'theme/app_theme.dart';
-import 'widgets/responsive_shell.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {
+import 'app/app.dart';
+import 'firebase_options.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initializeDateFormatting('id_ID');
   runApp(const SeiCycleApp());
-}
-
-class SeiCycleApp extends StatelessWidget {
-  const SeiCycleApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SeiCycle – Smart Integrated Farming',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const ResponsiveShell(),
-    );
-  }
 }

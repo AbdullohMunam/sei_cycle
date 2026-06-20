@@ -1,5 +1,5 @@
 name: sei_cycle
-description: "A new Flutter project."
+description: "MVP operasional Kebun Sei berbasis Flutter dan Firebase."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -31,9 +31,15 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  cloud_firestore: ^6.6.0
   cupertino_icons: ^1.0.8
+  firebase_auth: ^6.5.3
+  firebase_core: ^4.11.0
+  firebase_messaging: ^16.4.0
+  fl_chart: ^1.2.0
+  google_sign_in: ^7.2.0
+  intl: ^0.20.2
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:

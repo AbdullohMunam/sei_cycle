@@ -1,16 +1,9 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sei_cycle/main.dart';
+import 'package:sei_cycle/core/constants/farm_modules.dart';
 
 void main() {
-  testWidgets('SeiCycle app smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const SeiCycleApp());
-    expect(find.text('SeiCycle'), findsAny);
+  test('five default farm modules are available', () {
+    expect(FarmModules.values, hasLength(5));
+    expect(FarmModules.values.map((module) => module.id), contains('lele'));
   });
 }
