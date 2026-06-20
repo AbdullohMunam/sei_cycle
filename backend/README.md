@@ -42,11 +42,28 @@ File tersebut berbeda dari `android/app/google-services.json`. Jangan commit
 
 ## Menjalankan backend
 
-Seed data farm module:
+### Seeder farm modules
+
+Seeder `src/seeders/seedFarmModules.js` digunakan hanya untuk setup data awal
+atau development. Seeder mengisi collection Firestore `farm_modules` dengan
+modul Ayam Kampung, Maggot BSF, Cacing Tanah, Lele, dan Tanaman.
+
+Jalankan seeder secara manual:
 
 ```bash
 npm run seed:farm-modules
 ```
+
+Seeder perlu dijalankan:
+
+- setelah setup Firebase pertama kali;
+- ketika collection `farm_modules` masih kosong; atau
+- ketika developer baru menyiapkan project di lingkungan lokal.
+
+Seeder tidak perlu dan tidak boleh dijalankan setiap kali backend dimulai.
+Script `npm run dev` dan `npm start` tidak menjalankan seeder secara otomatis.
+Seeder menggunakan konfigurasi Firebase dari `.env` dan service account lokal;
+file credential tidak disimpan di dalam source code seeder.
 
 Development server:
 
