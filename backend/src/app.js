@@ -24,6 +24,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Mount all API routes before the global 404 and error handlers.
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/farm-modules', farmModuleRoutes);
@@ -35,6 +36,7 @@ app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/education', educationRoutes);
 app.use('/api/v1/reports', reportRoutes);
 
+// Global handlers must remain after every route.
 app.use(notFoundHandler);
 app.use(errorHandler);
 

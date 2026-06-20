@@ -10,11 +10,13 @@ const errorHandler = (error, req, res, next) => {
     return next(error);
   }
 
+  const statusCode = error.statusCode || error.status || 500;
+
   return errorResponse(
     res,
     error.message || 'Terjadi kesalahan pada server',
     null,
-    error.statusCode || 500,
+    statusCode,
   );
 };
 

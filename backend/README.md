@@ -101,6 +101,10 @@ Error validasi:
 }
 ```
 
+Route yang tidak dikenal ditangani oleh global 404 handler. Error dari
+controller diteruskan ke global error handler paling akhir, dan keduanya
+menggunakan format error yang sama.
+
 Jika Firebase Admin belum siap:
 
 ```json
@@ -114,7 +118,10 @@ Jika Firebase Admin belum siap:
 Timestamp Firestore dikirim sebagai ISO-8601 agar mudah diparse menjadi
 `DateTime` di Flutter.
 
-## Endpoint
+## Endpoint aktif
+
+Seluruh endpoint berikut sudah dipasang di `src/app.js` sebelum global 404 dan
+error handler.
 
 ### Sistem dan user
 
