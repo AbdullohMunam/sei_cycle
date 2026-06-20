@@ -80,6 +80,7 @@ firebase-service-account.json
 **/service-account.json
 **/firebase-service-account.json
 **/*-firebase-adminsdk-*.json
+backend/google-services.json
 
 # Firebase local emulator/cache
 .firebase/

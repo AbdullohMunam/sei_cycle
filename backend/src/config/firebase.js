@@ -17,7 +17,7 @@ const serviceAccountPath = path.resolve(
 
 if (!fs.existsSync(serviceAccountPath)) {
   console.warn(
-    `Firebase Admin belum terhubung: file service account tidak ditemukan di ${serviceAccountPath}. Endpoint mock tetap dapat digunakan.`,
+    `Firebase Admin belum terhubung: file service account tidak ditemukan di ${serviceAccountPath}. Endpoint yang membutuhkan Firestore akan mengembalikan error 503.`,
   );
 } else {
   try {
@@ -48,7 +48,7 @@ if (!fs.existsSync(serviceAccountPath)) {
     db = admin.firestore();
   } catch (error) {
     console.warn(
-      `Firebase Admin gagal diinisialisasi. Endpoint mock tetap dapat digunakan: ${error.message}`,
+      `Firebase Admin gagal diinisialisasi. Endpoint yang membutuhkan Firestore akan mengembalikan error 503: ${error.message}`,
     );
     db = null;
   }
