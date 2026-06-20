@@ -1,4 +1,4 @@
-package com.example.sei_cycle
+package id.seicycle.app
 
 import io.flutter.embedding.android.FlutterActivity
 
