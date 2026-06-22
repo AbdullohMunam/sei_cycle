@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../features/auth/presentation/auth_gate.dart';
+import '../features/auth/screen/auth_gate.dart';
 import '../theme/app_theme.dart';
 
 class SeiCycleApp extends StatelessWidget {

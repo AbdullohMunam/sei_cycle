@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../features/dashboard/presentation/dashboard_screen.dart';
-import '../features/education/presentation/education_screen.dart';
-import '../features/finance/presentation/finance_screen.dart';
-import '../features/inventory/presentation/inventory_screen.dart';
-import '../features/logbook/presentation/logbook_screen.dart';
+import '../features/dashboard/screen/dashboard_screen.dart';
+import '../features/education/screen/education_screen.dart';
+import '../features/finance/screen/finance_screen.dart';
+import '../features/inventory/screen/inventory_screen.dart';
+import '../features/logbook/screen/logbook_screen.dart';
 import '../features/profile/models/app_user.dart';
-import '../features/profile/presentation/profile_screen.dart';
-import '../features/schedule/presentation/schedule_screen.dart';
+import '../features/profile/screen/profile_screen.dart';
+import '../features/schedule/screen/schedule_screen.dart';
 import '../theme/app_theme.dart';
 
 class AppShell extends StatefulWidget {

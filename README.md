@@ -167,7 +167,6 @@ lib/
   app/
     app.dart
     app_shell.dart
-    routes.dart
   core/
     constants/
     services/

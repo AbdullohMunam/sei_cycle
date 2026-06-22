@@ -4,7 +4,7 @@ import 'package:sei_cycle/core/constants/farm_modules.dart';
 import 'package:sei_cycle/core/widgets/app_ui.dart';
 import 'package:sei_cycle/core/widgets/async_state_widgets.dart';
 import 'package:sei_cycle/core/widgets/feature_page.dart';
-import 'package:sei_cycle/features/auth/presentation/widgets/auth_frame.dart';
+import 'package:sei_cycle/features/auth/screen/widgets/auth_frame.dart';
 import 'package:sei_cycle/theme/app_theme.dart';
 
 void main() {
