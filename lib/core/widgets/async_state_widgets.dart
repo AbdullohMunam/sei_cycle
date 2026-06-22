@@ -1,5 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+import 'app_ui.dart';
+
+Widget? asyncSnapshotState<T>(
+  AsyncSnapshot<T> snapshot, {
+  String loadingLabel = 'Memuat data...',
+  String Function(Object error)? errorMessage,
+  bool allowNullData = false,
+}) {
+  if (snapshot.hasError) {
+    final error = snapshot.error!;
+    return ErrorState(message: errorMessage?.call(error) ?? '$error');
+  }
+  final nullWasEmitted =
+      allowNullData && snapshot.connectionState == ConnectionState.active;
+  if (!snapshot.hasData && !nullWasEmitted) {
+    return LoadingState(label: loadingLabel);
+  }
+  return null;
+}
+
 class LoadingState extends StatelessWidget {
   const LoadingState({super.key, this.label = 'Memuat data...'});
 
@@ -8,13 +29,26 @@ class LoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 12),
-          Text(label),
-        ],
+      child: AppCard(
+        borderColor: Colors.transparent,
+        color: AppColors.surface.withValues(alpha: 0.72),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -31,21 +65,41 @@ class ErrorState extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 48),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            if (onRetry != null) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba lagi'),
-              ),
-            ],
-          ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: AppCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const AppIconBox(
+                  icon: Icons.cloud_off_outlined,
+                  color: AppColors.error,
+                  size: 52,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Data belum dapat dimuat',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ),
+                if (onRetry != null) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Coba lagi'),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -58,32 +112,44 @@ class EmptyState extends StatelessWidget {
     super.key,
     this.message,
     this.icon = Icons.inbox_outlined,
+    this.action,
   });
 
   final String title;
   final String? message;
   final IconData icon;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            if (message != null) ...[
-              const SizedBox(height: 6),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppIconBox(icon: icon, color: AppColors.primaryGreen, size: 56),
+              const SizedBox(height: 14),
               Text(
-                message!,
+                title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
+              if (message != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  message!,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ),
+              ],
+              if (action != null) ...[const SizedBox(height: 16), action!],
             ],
-          ],
+          ),
         ),
       ),
     );

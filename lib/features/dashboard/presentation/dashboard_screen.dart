@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
+import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
 import '../models/dashboard_summary.dart';
 import '../services/dashboard_service.dart';
@@ -43,7 +45,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       future: _summaryFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const LoadingState(label: 'Menyusun dashboard...');
+          return const LoadingState(label: 'Menyusun ringkasan kebun...');
         }
         if (snapshot.hasError) {
           return ErrorState(
@@ -51,103 +53,243 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onRetry: () => setState(_load),
           );
         }
-        final summary = snapshot.data!;
+
+        final summary = snapshot.requireData;
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
             children: [
-              _WelcomeCard(profile: widget.profile),
-              const SizedBox(height: 18),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  final columns = width >= 1000
-                      ? 3
-                      : width >= 620
-                      ? 2
-                      : 1;
-                  final itemWidth = (width - ((columns - 1) * 12)) / columns;
-                  return Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _MetricCard(
-                        width: itemWidth,
-                        title: 'Logbook hari ini',
-                        value: '${summary.todayLogbooks}',
-                        icon: Icons.menu_book_outlined,
-                        color: Colors.green,
-                      ),
-                      _MetricCard(
-                        width: itemWidth,
-                        title: 'Stok rendah',
-                        value: '${summary.lowStockItems}',
-                        icon: Icons.inventory_2_outlined,
-                        color: Colors.orange,
-                      ),
-                      _MetricCard(
-                        width: itemWidth,
-                        title: 'Jadwal pending',
-                        value: '${summary.pendingSchedules}',
-                        icon: Icons.event_note_outlined,
-                        color: Colors.blue,
-                      ),
-                      _MetricCard(
-                        width: itemWidth,
-                        title: 'Total pemasukan',
-                        value: summary.financeVisible
-                            ? currencyFormat.format(summary.totalIncome)
-                            : 'Khusus admin',
-                        icon: Icons.trending_up,
-                        color: Colors.teal,
-                      ),
-                      _MetricCard(
-                        width: itemWidth,
-                        title: 'Total pengeluaran',
-                        value: summary.financeVisible
-                            ? currencyFormat.format(summary.totalExpense)
-                            : 'Khusus admin',
-                        icon: Icons.trending_down,
-                        color: Colors.redAccent,
-                      ),
-                      _MetricCard(
-                        width: itemWidth,
-                        title: 'Laba / rugi',
-                        value: summary.financeVisible
-                            ? currencyFormat.format(summary.profitLoss)
-                            : 'Khusus admin',
-                        icon: Icons.account_balance_wallet_outlined,
-                        color: summary.profitLoss >= 0
-                            ? Colors.green
-                            : Colors.red,
-                      ),
-                    ],
-                  );
-                },
+              _WelcomePanel(profile: widget.profile),
+              const SizedBox(height: AppSpacing.section),
+              const SectionTitle(
+                title: 'Ringkasan operasional',
+                subtitle: 'Kondisi pencatatan Kebun Sei hari ini.',
+                trailing: StatusBadge(
+                  label: 'Data langsung',
+                  color: AppColors.success,
+                  icon: Icons.circle,
+                ),
               ),
-              const SizedBox(height: 18),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Aktivitas 7 hari terakhir',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 4),
-                      const Text('Jumlah catatan logbook per hari.'),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 240,
-                        child: _ActivityChart(points: summary.activities),
-                      ),
-                    ],
+              const SizedBox(height: 12),
+              _MetricGrid(
+                metrics: [
+                  _MetricData(
+                    title: 'Logbook hari ini',
+                    value: '${summary.todayLogbooks}',
+                    helper: summary.todayLogbooks == 0
+                        ? 'Belum ada aktivitas tercatat'
+                        : 'Catatan operasional masuk',
+                    icon: Icons.menu_book_outlined,
+                    color: AppColors.primaryGreen,
+                  ),
+                  _MetricData(
+                    title: 'Stok perlu perhatian',
+                    value: '${summary.lowStockItems}',
+                    helper: summary.lowStockItems == 0
+                        ? 'Seluruh stok masih aman'
+                        : 'Item menyentuh batas minimum',
+                    icon: Icons.inventory_2_outlined,
+                    color: summary.lowStockItems == 0
+                        ? AppColors.success
+                        : AppColors.warning,
+                  ),
+                  _MetricData(
+                    title: 'Jadwal menunggu',
+                    value: '${summary.pendingSchedules}',
+                    helper: summary.pendingSchedules == 0
+                        ? 'Tidak ada agenda tertunda'
+                        : 'Agenda masih perlu ditindaklanjuti',
+                    icon: Icons.event_note_outlined,
+                    color: AppColors.info,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.section),
+              SectionTitle(
+                title: 'Aktivitas tujuh hari terakhir',
+                subtitle: 'Jumlah catatan logbook yang dibuat per hari.',
+                trailing: StatusBadge(
+                  label: '${_activityTotal(summary.activities)} catatan',
+                  color: AppColors.primaryGreen,
+                  icon: Icons.bar_chart_rounded,
+                ),
+              ),
+              const SizedBox(height: 12),
+              AppCard(
+                padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
+                child: SizedBox(
+                  height: 230,
+                  child: _ActivityChart(points: summary.activities),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.section),
+              const SectionTitle(
+                title: 'Keuangan sederhana',
+                subtitle: 'Ringkasan arus kas operasional yang tercatat.',
+              ),
+              const SizedBox(height: 12),
+              if (summary.financeVisible)
+                _MetricGrid(
+                  metrics: [
+                    _MetricData(
+                      title: 'Total pemasukan',
+                      value: currencyFormat.format(summary.totalIncome),
+                      helper: 'Akumulasi seluruh catatan',
+                      icon: Icons.south_west_rounded,
+                      color: AppColors.success,
+                    ),
+                    _MetricData(
+                      title: 'Total pengeluaran',
+                      value: currencyFormat.format(summary.totalExpense),
+                      helper: 'Biaya operasional tercatat',
+                      icon: Icons.north_east_rounded,
+                      color: AppColors.error,
+                    ),
+                    _MetricData(
+                      title: 'Laba / rugi',
+                      value: currencyFormat.format(summary.profitLoss),
+                      helper: summary.profitLoss >= 0
+                          ? 'Arus kas masih positif'
+                          : 'Pengeluaran melebihi pemasukan',
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: summary.profitLoss >= 0
+                          ? AppColors.primaryGreen
+                          : AppColors.warning,
+                    ),
+                  ],
+                )
+              else
+                const InlineMessage(
+                  icon: Icons.lock_outline,
+                  color: AppColors.accentBrown,
+                  message:
+                      'Ringkasan keuangan hanya ditampilkan untuk admin Kebun Sei.',
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WelcomePanel extends StatelessWidget {
+  const _WelcomePanel({required this.profile});
+
+  final AppUser profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 430;
+        return Container(
+          clipBehavior: Clip.antiAlias,
+          padding: EdgeInsets.all(compact ? 18 : 22),
+          decoration: BoxDecoration(
+            color: AppColors.primaryGreen,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -34,
+                top: -48,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    shape: BoxShape.circle,
                   ),
                 ),
+              ),
+              Positioned(
+                right: 46,
+                bottom: -54,
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_greeting()}, ${_firstName(profile.name)}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.78),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Kebun Sei hari ini',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Pantau pencatatan, stok, dan agenda dari satu tempat.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            const _WelcomeBadge(
+                              icon: Icons.location_on_outlined,
+                              label: 'Kebun Sei',
+                            ),
+                            _WelcomeBadge(
+                              icon: Icons.badge_outlined,
+                              label: _roleLabel(profile.role),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!compact) ...[
+                    const SizedBox(width: 18),
+                    Container(
+                      width: 74,
+                      height: 74,
+                      padding: const EdgeInsets.all(9),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Image.asset(
+                        'lib/assets/logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.eco_rounded,
+                          color: AppColors.primaryGreen,
+                          size: 42,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -157,89 +299,136 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _WelcomeCard extends StatelessWidget {
-  const _WelcomeCard({required this.profile});
+class _WelcomeBadge extends StatelessWidget {
+  const _WelcomeBadge({required this.icon, required this.label});
 
-  final AppUser profile;
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.primary,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            const Icon(Icons.eco, color: Colors.white, size: 44),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Halo, ${profile.name}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.headlineSmall?.copyWith(color: Colors.white),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Ringkasan operasional Kebun Sei - role ${profile.role}',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.width,
+class _MetricGrid extends StatelessWidget {
+  const _MetricGrid({required this.metrics});
+
+  final List<_MetricData> metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 960
+            ? 3
+            : constraints.maxWidth >= 560
+            ? 2
+            : 1;
+        const spacing = 12.0;
+        final width =
+            (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final metric in metrics)
+              SizedBox(
+                width: width,
+                child: _MetricCard(data: metric),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MetricData {
+  const _MetricData({
     required this.title,
     required this.value,
+    required this.helper,
     required this.icon,
     required this.color,
   });
 
-  final double width;
   final String title;
   final String value;
+  final String helper;
   final IconData icon;
   final Color color;
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({required this.data});
+
+  final _MetricData data;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: color.withValues(alpha: 0.12),
-                foregroundColor: color,
-                child: Icon(icon),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.bodyMedium),
-                    const SizedBox(height: 4),
-                    Text(value, style: Theme.of(context).textTheme.titleLarge),
-                  ],
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIconBox(icon: data.icon, color: data.color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    data.value,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: data.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  data.helper,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -260,7 +449,14 @@ class _ActivityChart extends StatelessWidget {
       BarChartData(
         maxY: (maxTotal + 2).toDouble(),
         alignment: BarChartAlignment.spaceAround,
-        gridData: const FlGridData(show: false),
+        gridData: FlGridData(
+          drawVerticalLine: false,
+          horizontalInterval: 1,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: AppColors.border.withValues(alpha: 0.8),
+            strokeWidth: 1,
+          ),
+        ),
         borderData: FlBorderData(show: false),
         barTouchData: BarTouchData(enabled: true),
         titlesData: FlTitlesData(
@@ -270,8 +466,19 @@ class _ActivityChart extends StatelessWidget {
           rightTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
           ),
-          leftTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              interval: 1,
+              getTitlesWidget: (value, _) => Text(
+                value.toInt().toString(),
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 10,
+                ),
+              ),
+            ),
           ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
@@ -285,6 +492,10 @@ class _ActivityChart extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     DateFormat('E', 'id_ID').format(points[index].date),
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 10,
+                    ),
                   ),
                 );
               },
@@ -292,14 +503,16 @@ class _ActivityChart extends StatelessWidget {
           ),
         ),
         barGroups: [
-          for (var i = 0; i < points.length; i++)
+          for (var index = 0; index < points.length; index++)
             BarChartGroupData(
-              x: i,
+              x: index,
               barRods: [
                 BarChartRodData(
-                  toY: points[i].total.toDouble(),
-                  width: 20,
-                  color: Theme.of(context).colorScheme.primary,
+                  toY: points[index].total.toDouble(),
+                  width: 18,
+                  color: points[index].total == 0
+                      ? AppColors.progressBg
+                      : AppColors.primaryGreen,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(6),
                   ),
@@ -311,3 +524,26 @@ class _ActivityChart extends StatelessWidget {
     );
   }
 }
+
+int _activityTotal(List<DailyActivityPoint> points) =>
+    points.fold(0, (total, point) => total + point.total);
+
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 11) return 'Selamat pagi';
+  if (hour < 15) return 'Selamat siang';
+  if (hour < 19) return 'Selamat sore';
+  return 'Selamat malam';
+}
+
+String _firstName(String name) {
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) return 'Rekan Kebun';
+  return trimmed.split(RegExp(r'\s+')).first;
+}
+
+String _roleLabel(String role) => switch (role) {
+  'admin' => 'Administrator',
+  'operator' => 'Operator kebun',
+  _ => 'Mitra',
+};

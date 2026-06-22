@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
 class FeaturePage extends StatelessWidget {
   const FeaturePage({
     required this.title,
@@ -16,42 +18,61 @@ class FeaturePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 600;
+        final header = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.headlineMedium),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle!,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+              ),
+            ],
+          ],
+        );
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            compact ? 16 : 24,
+            compact ? 18 : 22,
+            compact ? 16 : 24,
+            compact ? 16 : 22,
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
+              if (compact) ...[
+                header,
+                if (actions.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(spacing: 8, runSpacing: 8, children: actions),
+                  ),
+                ],
+              ] else
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
+                    Expanded(child: header),
+                    if (actions.isNotEmpty) ...[
+                      const SizedBox(width: 16),
+                      Wrap(spacing: 8, runSpacing: 8, children: actions),
                     ],
                   ],
                 ),
-              ),
-              if (actions.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: actions),
-              ],
+              const SizedBox(height: 18),
+              Expanded(child: child),
             ],
           ),
-          const SizedBox(height: 18),
-          Expanded(child: child),
-        ],
-      ),
+        );
+      },
     );
   }
 }

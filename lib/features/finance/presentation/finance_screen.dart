@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/operation_feedback.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
 import '../../../core/widgets/feature_page.dart';
+import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
 import '../models/finance_record.dart';
 import '../services/finance_service.dart';
@@ -30,15 +33,21 @@ class _FinanceScreenState extends State<FinanceScreen> {
       context: context,
       builder: (_) => _FinanceFormDialog(record: record),
     );
-    if (value == null) return;
-    await _service.save(
-      id: record?.id,
-      type: value.type,
-      category: value.category,
-      amount: value.amount,
-      date: value.date,
-      note: value.note,
-      userId: widget.profile.uid,
+    if (value == null || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.save(
+        id: record?.id,
+        type: value.type,
+        category: value.category,
+        amount: value.amount,
+        date: value.date,
+        note: value.note,
+        userId: widget.profile.uid,
+      ),
+      successMessage: record == null
+          ? 'Transaksi ditambahkan.'
+          : 'Transaksi diperbarui.',
     );
   }
 
@@ -46,7 +55,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
   Widget build(BuildContext context) {
     return FeaturePage(
       title: 'Keuangan',
-      subtitle: 'Pemasukan, pengeluaran, dan laba rugi sederhana.',
+      subtitle: 'Catat arus kas sederhana untuk kebutuhan operasional kebun.',
       actions: [
         FilledButton.icon(
           onPressed: _openForm,
@@ -57,92 +66,39 @@ class _FinanceScreenState extends State<FinanceScreen> {
       child: StreamBuilder<List<FinanceRecord>>(
         stream: _service.watchRecords(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const LoadingState();
-          if (snapshot.hasError) {
-            return ErrorState(message: '${snapshot.error}');
-          }
-          final records = snapshot.data!;
+          final state = asyncSnapshotState(snapshot);
+          if (state != null) return state;
+          final records = snapshot.requireData;
           final income = records
               .where((record) => record.type == 'income')
               .fold<double>(0, (total, record) => total + record.amount);
           final expense = records
               .where((record) => record.type == 'expense')
               .fold<double>(0, (total, record) => total + record.amount);
+
           return Column(
             children: [
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _FinanceTotalCard(
-                    label: 'Pemasukan',
-                    value: income,
-                    color: Colors.green,
-                  ),
-                  _FinanceTotalCard(
-                    label: 'Pengeluaran',
-                    value: expense,
-                    color: Colors.red,
-                  ),
-                  _FinanceTotalCard(
-                    label: 'Laba / rugi',
-                    value: income - expense,
-                    color: income - expense >= 0 ? Colors.blue : Colors.orange,
-                  ),
-                ],
+              _FinanceSummary(
+                income: income,
+                expense: expense,
+                balance: income - expense,
               ),
               const SizedBox(height: 14),
               Expanded(
                 child: records.isEmpty
                     ? const EmptyState(
                         title: 'Belum ada transaksi',
-                        message: 'Tambahkan pemasukan atau pengeluaran.',
+                        message:
+                            'Data akan muncul setelah pemasukan atau pengeluaran pertama dicatat.',
                         icon: Icons.account_balance_wallet_outlined,
                       )
                     : ListView.separated(
                         itemCount: records.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final record = records[index];
-                          final isIncome = record.type == 'income';
-                          return Card(
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    (isIncome ? Colors.green : Colors.red)
-                                        .withValues(alpha: 0.12),
-                                foregroundColor: isIncome
-                                    ? Colors.green
-                                    : Colors.red,
-                                child: Icon(
-                                  isIncome
-                                      ? Icons.arrow_downward
-                                      : Icons.arrow_upward,
-                                ),
-                              ),
-                              title: Text(record.category),
-                              subtitle: Text(
-                                '${shortDateFormat.format(record.date)} · '
-                                '${record.note}',
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    currencyFormat.format(record.amount),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  IconButton(
-                                    onPressed: () => _openForm(record),
-                                    icon: const Icon(Icons.edit_outlined),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) => _FinanceRecordCard(
+                          record: records[index],
+                          onEdit: () => _openForm(records[index]),
+                        ),
                       ),
               ),
             ],
@@ -153,38 +109,190 @@ class _FinanceScreenState extends State<FinanceScreen> {
   }
 }
 
+class _FinanceSummary extends StatelessWidget {
+  const _FinanceSummary({
+    required this.income,
+    required this.expense,
+    required this.balance,
+  });
+
+  final double income;
+  final double expense;
+  final double balance;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 820
+            ? 3
+            : constraints.maxWidth >= 520
+            ? 2
+            : 1;
+        const spacing = 10.0;
+        final width =
+            (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
+        final cards = [
+          _FinanceTotalCard(
+            label: 'Pemasukan',
+            value: income,
+            color: AppColors.success,
+            icon: Icons.south_west_rounded,
+          ),
+          _FinanceTotalCard(
+            label: 'Pengeluaran',
+            value: expense,
+            color: AppColors.error,
+            icon: Icons.north_east_rounded,
+          ),
+          _FinanceTotalCard(
+            label: 'Laba / rugi',
+            value: balance,
+            color: balance >= 0 ? AppColors.primaryGreen : AppColors.warning,
+            icon: Icons.account_balance_wallet_outlined,
+          ),
+        ];
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final card in cards) SizedBox(width: width, child: card),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _FinanceTotalCard extends StatelessWidget {
   const _FinanceTotalCard({
     required this.label,
     required this.value,
     required this.color,
+    required this.icon,
   });
 
   final String label;
   final double value;
   final Color color;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 230,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label),
-              const SizedBox(height: 6),
-              Text(
-                currencyFormat.format(value),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(color: color),
-              ),
-            ],
+    return AppCard(
+      child: Row(
+        children: [
+          AppIconBox(icon: icon, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    currencyFormat.format(value),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: color),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FinanceRecordCard extends StatelessWidget {
+  const _FinanceRecordCard({required this.record, required this.onEdit});
+
+  final FinanceRecord record;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final isIncome = record.type == 'income';
+    final color = isIncome ? AppColors.success : AppColors.error;
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIconBox(
+            icon: isIncome
+                ? Icons.south_west_rounded
+                : Icons.north_east_rounded,
+            color: color,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        record.category,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    StatusBadge(
+                      label: isIncome ? 'Pemasukan' : 'Pengeluaran',
+                      color: color,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  shortDateFormat.format(record.date),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
+                ),
+                if (record.note.trim().isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    record.note,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        currencyFormat.format(record.amount),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: color),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 19),
+                      tooltip: 'Edit transaksi',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -275,28 +383,35 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'income',
-                      label: Text('Pemasukan'),
-                      icon: Icon(Icons.trending_up),
-                    ),
-                    ButtonSegment(
-                      value: 'expense',
-                      label: Text('Pengeluaran'),
-                      icon: Icon(Icons.trending_down),
-                    ),
-                  ],
-                  selected: {_type},
-                  onSelectionChanged: (value) {
-                    setState(() => _type = value.first);
-                  },
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: 'income',
+                        label: Text('Pemasukan'),
+                        icon: Icon(Icons.trending_up),
+                      ),
+                      ButtonSegment(
+                        value: 'expense',
+                        label: Text('Pengeluaran'),
+                        icon: Icon(Icons.trending_down),
+                      ),
+                    ],
+                    selected: {_type},
+                    onSelectionChanged: (value) {
+                      setState(() => _type = value.first);
+                    },
+                  ),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _category,
-                  decoration: const InputDecoration(labelText: 'Kategori'),
+                  decoration: const InputDecoration(
+                    labelText: 'Kategori',
+                    hintText: 'Contoh: penjualan telur',
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
@@ -305,7 +420,10 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(labelText: 'Nominal'),
+                  decoration: const InputDecoration(
+                    labelText: 'Nominal',
+                    prefixText: 'Rp ',
+                  ),
                   validator: (_) {
                     final value = _parsedAmount();
                     return value == null || value <= 0
@@ -314,11 +432,11 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
                   },
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Tanggal'),
-                  subtitle: Text(shortDateFormat.format(_date)),
-                  trailing: const Icon(Icons.calendar_today),
+                AppMenuCard(
+                  icon: Icons.calendar_today_outlined,
+                  title: 'Tanggal transaksi',
+                  subtitle: shortDateFormat.format(_date),
+                  trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
                     final result = await showDatePicker(
                       context: context,
@@ -329,10 +447,14 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
                     if (result != null) setState(() => _date = result);
                   },
                 ),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _note,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Catatan'),
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan',
+                    hintText: 'Keterangan singkat transaksi (opsional)',
+                  ),
                 ),
               ],
             ),

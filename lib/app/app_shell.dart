@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/education/presentation/education_screen.dart';
@@ -8,6 +9,7 @@ import '../features/logbook/presentation/logbook_screen.dart';
 import '../features/profile/models/app_user.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/schedule/presentation/schedule_screen.dart';
+import '../theme/app_theme.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({required this.profile, super.key});
@@ -21,59 +23,57 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
 
-  List<_Destination> get _destinations {
-    final items = <_Destination>[
+  List<_Destination> get _destinations => <_Destination>[
+    _Destination(
+      label: 'Dashboard',
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard_rounded,
+      builder: () => DashboardScreen(profile: widget.profile),
+    ),
+    if (widget.profile.canManageOperations)
       _Destination(
-        label: 'Dashboard',
-        icon: Icons.dashboard_outlined,
-        selectedIcon: Icons.dashboard,
-        builder: () => DashboardScreen(profile: widget.profile),
+        label: 'Logbook',
+        icon: Icons.menu_book_outlined,
+        selectedIcon: Icons.menu_book_rounded,
+        builder: () => LogbookScreen(profile: widget.profile),
       ),
-      if (widget.profile.canManageOperations)
-        _Destination(
-          label: 'Logbook',
-          icon: Icons.menu_book_outlined,
-          selectedIcon: Icons.menu_book,
-          builder: () => LogbookScreen(profile: widget.profile),
-        ),
-      if (widget.profile.canManageOperations)
-        _Destination(
-          label: 'Inventaris',
-          icon: Icons.inventory_2_outlined,
-          selectedIcon: Icons.inventory_2,
-          builder: () => InventoryScreen(profile: widget.profile),
-        ),
-      if (widget.profile.canManageOperations)
-        _Destination(
-          label: 'Jadwal',
-          icon: Icons.event_note_outlined,
-          selectedIcon: Icons.event_note,
-          builder: () => ScheduleScreen(profile: widget.profile),
-        ),
+    if (widget.profile.canManageOperations)
       _Destination(
-        label: 'Edukasi',
-        icon: Icons.school_outlined,
-        selectedIcon: Icons.school,
-        builder: () => EducationScreen(profile: widget.profile),
+        label: 'Inventaris',
+        icon: Icons.inventory_2_outlined,
+        selectedIcon: Icons.inventory_2_rounded,
+        builder: () => InventoryScreen(profile: widget.profile),
       ),
-      if (widget.profile.isAdmin)
-        _Destination(
-          label: 'Keuangan',
-          icon: Icons.account_balance_wallet_outlined,
-          selectedIcon: Icons.account_balance_wallet,
-          builder: () => FinanceScreen(profile: widget.profile),
-        ),
+    if (widget.profile.canManageOperations)
       _Destination(
-        label: 'Profil',
-        icon: Icons.person_outline,
-        selectedIcon: Icons.person,
-        builder: () => ProfileScreen(profile: widget.profile),
+        label: 'Jadwal',
+        icon: Icons.event_note_outlined,
+        selectedIcon: Icons.event_note_rounded,
+        builder: () => ScheduleScreen(profile: widget.profile),
       ),
-    ];
-    return items;
-  }
+    _Destination(
+      label: 'Edukasi',
+      icon: Icons.school_outlined,
+      selectedIcon: Icons.school_rounded,
+      builder: () => EducationScreen(profile: widget.profile),
+    ),
+    if (widget.profile.isAdmin)
+      _Destination(
+        label: 'Keuangan',
+        icon: Icons.account_balance_wallet_outlined,
+        selectedIcon: Icons.account_balance_wallet_rounded,
+        builder: () => FinanceScreen(profile: widget.profile),
+      ),
+    _Destination(
+      label: 'Profil',
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person_rounded,
+      builder: () => ProfileScreen(profile: widget.profile),
+    ),
+  ];
 
   void _select(int index) {
+    if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
   }
 
@@ -84,45 +84,21 @@ class _AppShellState extends State<AppShell> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final desktop = constraints.maxWidth >= 900;
         final content = destinations[_selectedIndex].builder();
-
-        if (desktop) {
-          return Scaffold(
-            body: Row(
-              children: [
-                SizedBox(
-                  width: 250,
-                  child: Material(
-                    color: Theme.of(context).colorScheme.surface,
-                    child: _NavigationPanel(
-                      profile: widget.profile,
-                      destinations: destinations,
-                      selectedIndex: _selectedIndex,
-                      onSelected: _select,
-                    ),
-                  ),
-                ),
-                const VerticalDivider(width: 1),
-                Expanded(child: content),
-              ],
-            ),
+        if (constraints.maxWidth >= 900) {
+          return _DesktopShell(
+            profile: widget.profile,
+            destinations: destinations,
+            selectedIndex: _selectedIndex,
+            onSelected: _select,
+            body: content,
           );
         }
-
-        return Scaffold(
-          appBar: AppBar(title: Text(destinations[_selectedIndex].label)),
-          drawer: Drawer(
-            child: _NavigationPanel(
-              profile: widget.profile,
-              destinations: destinations,
-              selectedIndex: _selectedIndex,
-              onSelected: (index) {
-                Navigator.pop(context);
-                _select(index);
-              },
-            ),
-          ),
+        return _MobileShell(
+          profile: widget.profile,
+          destinations: destinations,
+          selectedIndex: _selectedIndex,
+          onSelected: _select,
           body: content,
         );
       },
@@ -144,95 +120,437 @@ class _Destination {
   final Widget Function() builder;
 }
 
-class _NavigationPanel extends StatelessWidget {
-  const _NavigationPanel({
+class _MobileShell extends StatelessWidget {
+  const _MobileShell({
     required this.profile,
     required this.destinations,
     required this.selectedIndex,
     required this.onSelected,
+    required this.body,
   });
 
   final AppUser profile;
   final List<_Destination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final Widget body;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            color: Theme.of(context).colorScheme.primary,
-            child: Row(
-              children: [
-                Image.asset(
-                  'lib/assets/logo.png',
-                  width: 46,
-                  height: 46,
-                  errorBuilder: (_, _, _) =>
-                      const Icon(Icons.eco, color: Colors.white, size: 42),
+    final profileIndex = destinations.indexWhere(
+      (destination) => destination.label == 'Profil',
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 64,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            const _BrandLogo(size: 38),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('SeiCycle'),
+                  Text(
+                    destinations[selectedIndex].label,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (profileIndex != selectedIndex)
+            IconButton(
+              onPressed: () => onSelected(profileIndex),
+              tooltip: 'Buka profil',
+              icon: _ProfileAvatar(profile: profile, radius: 17),
+            ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: body,
+      bottomNavigationBar: _MobileNavigation(
+        destinations: destinations,
+        selectedIndex: selectedIndex,
+        onSelected: onSelected,
+      ),
+    );
+  }
+}
+
+class _MobileNavigation extends StatelessWidget {
+  const _MobileNavigation({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<_Destination> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasOverflow = destinations.length > 5;
+    final visibleCount = hasOverflow ? 4 : destinations.length;
+    final navigationIndex = hasOverflow && selectedIndex >= visibleCount
+        ? visibleCount
+        : selectedIndex;
+
+    return NavigationBar(
+      selectedIndex: navigationIndex,
+      onDestinationSelected: (index) {
+        if (!hasOverflow || index < visibleCount) {
+          onSelected(index);
+          return;
+        }
+        _showMore(context, visibleCount);
+      },
+      destinations: [
+        for (var index = 0; index < visibleCount; index++)
+          NavigationDestination(
+            icon: Icon(destinations[index].icon),
+            selectedIcon: Icon(destinations[index].selectedIcon),
+            label: destinations[index].label,
+          ),
+        if (hasOverflow)
+          const NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view_rounded),
+            label: 'Lainnya',
+          ),
+      ],
+    );
+  }
+
+  Future<void> _showMore(BuildContext context, int startIndex) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+              child: Text(
+                'Menu lainnya',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            for (var index = startIndex; index < destinations.length; index++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: ListTile(
+                  selected: index == selectedIndex,
+                  selectedColor: AppColors.primaryGreen,
+                  selectedTileColor: AppColors.softGreen,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  leading: Icon(
+                    index == selectedIndex
+                        ? destinations[index].selectedIcon
+                        : destinations[index].icon,
+                  ),
+                  title: Text(destinations[index].label),
+                  trailing: index == selectedIndex
+                      ? const Icon(Icons.check_rounded, size: 20)
+                      : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    onSelected(index);
+                  },
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'SeiCycle',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopShell extends StatelessWidget {
+  const _DesktopShell({
+    required this.profile,
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+    required this.body,
+  });
+
+  final AppUser profile;
+  final List<_Destination> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = DateFormat('EEEE, d MMM yyyy', 'id_ID').format(DateTime.now());
+
+    return Scaffold(
+      body: Row(
+        children: [
+          SizedBox(
+            width: 248,
+            child: Material(
+              color: AppColors.surface,
+              child: SafeArea(
+                right: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 76,
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      color: AppColors.primaryGreen,
+                      child: const Row(
+                        children: [
+                          _BrandLogo(size: 44),
+                          SizedBox(width: 12),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SeiCycle',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                'Operasional Kebun Sei',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(18, 18, 18, 8),
+                      child: Text(
+                        'MENU UTAMA',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
+                          color: AppColors.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
                         ),
                       ),
-                      Text(
-                        'Kebun Sei',
-                        style: TextStyle(color: Colors.white70),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        itemCount: destinations.length,
+                        itemBuilder: (context, index) {
+                          final destination = destinations[index];
+                          final selected = index == selectedIndex;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: ListTile(
+                              selected: selected,
+                              selectedColor: AppColors.primaryGreen,
+                              selectedTileColor: AppColors.softGreen,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              leading: Icon(
+                                selected
+                                    ? destination.selectedIcon
+                                    : destination.icon,
+                                size: 21,
+                              ),
+                              title: Text(
+                                destination.label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                              onTap: () => onSelected(index),
+                            ),
+                          );
+                        },
                       ),
+                    ),
+                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          _ProfileAvatar(profile: profile, radius: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _roleLabel(profile.role),
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.success,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  height: 72,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(bottom: BorderSide(color: AppColors.border)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        destinations[selectedIndex].label,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.softGreen,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_outlined,
+                              size: 14,
+                              color: AppColors.primaryGreen,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _capitalize(date),
+                              style: const TextStyle(
+                                color: AppColors.primaryGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _ProfileAvatar(profile: profile, radius: 18),
                     ],
                   ),
                 ),
+                Expanded(child: body),
               ],
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              itemCount: destinations.length,
-              itemBuilder: (context, index) {
-                final destination = destinations[index];
-                final selected = index == selectedIndex;
-                return ListTile(
-                  selected: selected,
-                  leading: Icon(
-                    selected ? destination.selectedIcon : destination.icon,
-                  ),
-                  title: Text(destination.label),
-                  onTap: () => onSelected(index),
-                );
-              },
-            ),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: CircleAvatar(
-              backgroundImage: profile.photoUrl.isEmpty
-                  ? null
-                  : NetworkImage(profile.photoUrl),
-              child: profile.photoUrl.isEmpty ? const Icon(Icons.person) : null,
-            ),
-            title: Text(
-              profile.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(profile.role),
           ),
         ],
       ),
     );
   }
 }
+
+class _BrandLogo extends StatelessWidget {
+  const _BrandLogo({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(5),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+      child: Image.asset(
+        'lib/assets/logo.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) =>
+            const Icon(Icons.eco_rounded, color: AppColors.primaryGreen),
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.profile, required this.radius});
+
+  final AppUser profile;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.softGreen,
+      foregroundColor: AppColors.primaryGreen,
+      backgroundImage: profile.photoUrl.isEmpty
+          ? null
+          : NetworkImage(profile.photoUrl),
+      child: profile.photoUrl.isEmpty
+          ? Icon(Icons.person_rounded, size: radius)
+          : null,
+    );
+  }
+}
+
+String _roleLabel(String role) => switch (role) {
+  'admin' => 'Administrator',
+  'operator' => 'Operator kebun',
+  _ => 'Mitra Kebun Sei',
+};
+
+String _capitalize(String value) =>
+    value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';

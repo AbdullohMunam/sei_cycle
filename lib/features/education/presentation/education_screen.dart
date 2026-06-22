@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/operation_feedback.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
 import '../../../core/widgets/feature_page.dart';
+import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
 import '../models/education_content.dart';
 import '../services/education_service.dart';
@@ -31,14 +34,20 @@ class _EducationScreenState extends State<EducationScreen> {
       context: context,
       builder: (_) => _EducationFormDialog(content: content),
     );
-    if (value == null) return;
-    await _service.save(
-      id: content?.id,
-      title: value.title,
-      type: value.type,
-      content: value.content,
-      externalUrl: value.externalUrl,
-      isPublished: value.isPublished,
+    if (value == null || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.save(
+        id: content?.id,
+        title: value.title,
+        type: value.type,
+        content: value.content,
+        externalUrl: value.externalUrl,
+        isPublished: value.isPublished,
+      ),
+      successMessage: content == null
+          ? 'Konten ditambahkan.'
+          : 'Konten diperbarui.',
     );
   }
 
@@ -46,7 +55,7 @@ class _EducationScreenState extends State<EducationScreen> {
   Widget build(BuildContext context) {
     return FeaturePage(
       title: 'Edukasi Kebun Sei',
-      subtitle: 'Artikel, video eksternal, dan SOP tanpa upload Storage.',
+      subtitle: 'Panduan lapangan, artikel, video, dan SOP untuk tim kebun.',
       actions: [
         if (widget.profile.isAdmin)
           FilledButton.icon(
@@ -57,47 +66,43 @@ class _EducationScreenState extends State<EducationScreen> {
       ],
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
+          AppCard(
+            padding: const EdgeInsets.all(12),
+            child: ResponsiveFormRow(
+              breakpoint: 560,
+              children: [
+                TextField(
                   onChanged: (value) => setState(() => _query = value),
                   decoration: const InputDecoration(
-                    hintText: 'Cari edukasi...',
+                    hintText: 'Cari judul atau isi panduan...',
                     prefixIcon: Icon(Icons.search),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 170,
-                child: DropdownButtonFormField<String?>(
+                DropdownButtonFormField<String?>(
                   initialValue: _type,
-                  decoration: const InputDecoration(labelText: 'Tipe'),
+                  decoration: const InputDecoration(labelText: 'Jenis konten'),
                   items: const [
-                    DropdownMenuItem(value: null, child: Text('Semua')),
+                    DropdownMenuItem(value: null, child: Text('Semua jenis')),
                     DropdownMenuItem(value: 'artikel', child: Text('Artikel')),
                     DropdownMenuItem(value: 'video', child: Text('Video')),
                     DropdownMenuItem(value: 'sop', child: Text('SOP')),
                   ],
                   onChanged: (value) => setState(() => _type = value),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Expanded(
             child: StreamBuilder<List<EducationContent>>(
               stream: _service.watchContents(
                 includeDrafts: widget.profile.isAdmin,
               ),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const LoadingState();
-                if (snapshot.hasError) {
-                  return ErrorState(message: '${snapshot.error}');
-                }
+                final state = asyncSnapshotState(snapshot);
+                if (state != null) return state;
                 final query = _query.toLowerCase();
-                final contents = snapshot.data!.where((item) {
+                final contents = snapshot.requireData.where((item) {
                   final matchesType = _type == null || item.type == _type;
                   final matchesQuery =
                       query.isEmpty ||
@@ -106,10 +111,13 @@ class _EducationScreenState extends State<EducationScreen> {
                   return matchesType && matchesQuery;
                 }).toList();
                 if (contents.isEmpty) {
-                  return const EmptyState(
-                    title: 'Konten tidak ditemukan',
-                    message:
-                        'Admin dapat menambahkan artikel, video, atau SOP.',
+                  return EmptyState(
+                    title: _query.isEmpty
+                        ? 'Belum ada materi edukasi'
+                        : 'Materi tidak ditemukan',
+                    message: _query.isEmpty
+                        ? 'Panduan akan muncul setelah admin menerbitkan konten pertama.'
+                        : 'Coba gunakan kata kunci lain atau pilih semua jenis konten.',
                     icon: Icons.school_outlined,
                   );
                 }
@@ -125,64 +133,14 @@ class _EducationScreenState extends State<EducationScreen> {
                         crossAxisCount: columns,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        mainAxisExtent: 260,
+                        mainAxisExtent: 250,
                       ),
                       itemCount: contents.length,
                       itemBuilder: (context, index) {
-                        final content = contents[index];
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(_iconForType(content.type)),
-                                    const SizedBox(width: 8),
-                                    Chip(label: Text(content.type)),
-                                    const Spacer(),
-                                    if (!content.isPublished)
-                                      const Chip(label: Text('Draft')),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  content.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child: Text(
-                                    content.content,
-                                    maxLines: 5,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (content.externalUrl.isNotEmpty)
-                                  SelectableText(
-                                    content.externalUrl,
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                  ),
-                                if (widget.profile.isAdmin)
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: IconButton(
-                                      onPressed: () => _openForm(content),
-                                      icon: const Icon(Icons.edit_outlined),
-                                      tooltip: 'Edit konten',
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
+                        return _EducationCard(
+                          content: contents[index],
+                          canEdit: widget.profile.isAdmin,
+                          onEdit: () => _openForm(contents[index]),
                         );
                       },
                     );
@@ -197,10 +155,122 @@ class _EducationScreenState extends State<EducationScreen> {
   }
 }
 
+class _EducationCard extends StatelessWidget {
+  const _EducationCard({
+    required this.content,
+    required this.canEdit,
+    required this.onEdit,
+  });
+
+  final EducationContent content;
+  final bool canEdit;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorForType(content.type);
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 62,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            color: color.withValues(alpha: 0.1),
+            child: Row(
+              children: [
+                AppIconBox(icon: _iconForType(content.type), color: color),
+                const SizedBox(width: 10),
+                StatusBadge(label: _typeLabel(content.type), color: color),
+                const Spacer(),
+                if (!content.isPublished)
+                  const StatusBadge(
+                    label: 'Draft',
+                    color: AppColors.warning,
+                    icon: Icons.edit_note_outlined,
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 13, 14, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    content.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 7),
+                  Expanded(
+                    child: Text(
+                      content.content,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      if (content.externalUrl.isNotEmpty) ...[
+                        const Icon(
+                          Icons.link_rounded,
+                          size: 15,
+                          color: AppColors.primaryGreen,
+                        ),
+                        const SizedBox(width: 5),
+                        const Expanded(
+                          child: Text(
+                            'Tautan pendukung tersedia',
+                            style: TextStyle(
+                              color: AppColors.primaryGreen,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ] else
+                        const Spacer(),
+                      if (canEdit)
+                        IconButton(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_outlined, size: 19),
+                          tooltip: 'Edit konten',
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 IconData _iconForType(String type) => switch (type) {
   'video' => Icons.ondemand_video_outlined,
   'sop' => Icons.fact_check_outlined,
   _ => Icons.article_outlined,
+};
+
+Color _colorForType(String type) => switch (type) {
+  'video' => AppColors.info,
+  'sop' => AppColors.accentBrown,
+  _ => AppColors.primaryGreen,
+};
+
+String _typeLabel(String type) => switch (type) {
+  'video' => 'Video',
+  'sop' => 'SOP',
+  _ => 'Artikel',
 };
 
 class _EducationFormValue {

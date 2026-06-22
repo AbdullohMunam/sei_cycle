@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/messaging_service.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/feature_page.dart';
+import '../../../theme/app_theme.dart';
 import '../../auth/services/auth_service.dart';
 import '../../farm_modules/services/farm_module_service.dart';
 import '../models/app_user.dart';
@@ -48,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Gagal: $error')));
+        ).showSnackBar(SnackBar(content: Text('Belum berhasil: $error')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -59,112 +61,194 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return FeaturePage(
       title: 'Profil',
-      subtitle: 'Data akun dan utilitas konfigurasi MVP.',
+      subtitle: 'Kelola data akun dan preferensi penggunaan SeiCycle.',
       child: ListView(
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundImage: widget.profile.photoUrl.isEmpty
-                            ? null
-                            : NetworkImage(widget.profile.photoUrl),
-                        child: widget.profile.photoUrl.isEmpty
-                            ? const Icon(Icons.person, size: 32)
-                            : null,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.profile.email,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Chip(label: Text(widget.profile.role)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  TextField(
-                    controller: _name,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(labelText: 'Nama'),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(
-                            () => UserProfileService().updateName(
-                              widget.profile.uid,
-                              _name.text,
-                            ),
-                            'Profil diperbarui.',
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: AppColors.softGreen,
+                      foregroundColor: AppColors.primaryGreen,
+                      backgroundImage: widget.profile.photoUrl.isEmpty
+                          ? null
+                          : NetworkImage(widget.profile.photoUrl),
+                      child: widget.profile.photoUrl.isEmpty
+                          ? const Icon(Icons.person_rounded, size: 32)
+                          : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.profile.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
-                    icon: const Icon(Icons.save_outlined),
-                    label: const Text('Simpan profil'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (widget.profile.isAdmin)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.eco_outlined),
-                title: const Text('Siapkan farm_modules'),
-                subtitle: const Text(
-                  'Buat atau perbarui 5 dokumen modul default di Firestore.',
+                          const SizedBox(height: 3),
+                          Text(
+                            widget.profile.email,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 7),
+                          StatusBadge(
+                            label: _roleLabel(widget.profile.role),
+                            color: AppColors.primaryGreen,
+                            icon: Icons.badge_outlined,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                trailing: FilledButton(
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _name,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama tampilan',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
                   onPressed: _busy
                       ? null
                       : () => _run(
-                          FarmModuleService().seedDefaults,
-                          'Lima farm module berhasil disiapkan.',
+                          () => UserProfileService().updateName(
+                            widget.profile.uid,
+                            _name.text,
+                          ),
+                          'Profil diperbarui.',
                         ),
-                  child: const Text('Seed'),
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Simpan perubahan'),
                 ),
-              ),
-            ),
-          const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.notifications_active_outlined),
-              title: const Text('Izin notifikasi'),
-              subtitle: const Text(
-                'Opsional. Meminta izin FCM tanpa mengirim push notification.',
-              ),
-              trailing: OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () => _run(() async {
-                        await MessagingService().requestPermissionAndGetToken();
-                      }, 'Permintaan izin notifikasi selesai.'),
-                child: const Text('Aktifkan'),
-              ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          if (widget.profile.isAdmin) ...[
+            _SettingsCard(
+              icon: Icons.eco_outlined,
+              title: 'Modul operasional default',
+              subtitle:
+                  'Siapkan lima modul kebun agar pilihan pencatatan tetap konsisten.',
+              action: FilledButton(
+                onPressed: _busy
+                    ? null
+                    : () => _run(
+                        FarmModuleService().seedDefaults,
+                        'Lima modul kebun berhasil disiapkan.',
+                      ),
+                child: const Text('Siapkan modul'),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          _SettingsCard(
+            icon: Icons.notifications_active_outlined,
+            title: 'Notifikasi perangkat',
+            subtitle:
+                'Izinkan SeiCycle menyiapkan notifikasi untuk pengingat operasional.',
+            action: OutlinedButton(
+              onPressed: _busy
+                  ? null
+                  : () => _run(() async {
+                      await MessagingService().requestPermissionAndGetToken();
+                    }, 'Permintaan izin notifikasi selesai.'),
+              child: const Text('Aktifkan'),
+            ),
+          ),
+          const SizedBox(height: 18),
           OutlinedButton.icon(
             onPressed: _busy ? null : AuthService().signOut,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: const BorderSide(color: Color(0xFFF3C8C8)),
+            ),
             icon: const Icon(Icons.logout),
-            label: const Text('Keluar'),
+            label: const Text('Keluar dari akun'),
           ),
         ],
       ),
     );
   }
 }
+
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 460;
+          final info = Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppIconBox(icon: icon, color: AppColors.primaryGreen),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [info, const SizedBox(height: 14), action],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: info),
+              const SizedBox(width: 16),
+              action,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+String _roleLabel(String role) => switch (role) {
+  'admin' => 'Administrator',
+  'operator' => 'Operator kebun',
+  _ => 'Mitra Kebun Sei',
+};

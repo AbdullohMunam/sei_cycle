@@ -75,12 +75,24 @@ class _AuthGateState extends State<AuthGate> {
             return StreamBuilder<AppUser?>(
               stream: _profileService.watchProfile(user.uid),
               builder: (context, profileSnapshot) {
-                if (!profileSnapshot.hasData) {
+                final state = asyncSnapshotState(
+                  profileSnapshot,
+                  loadingLabel: 'Memuat hak akses...',
+                  errorMessage: (error) =>
+                      'Profil gagal dimuat dari Firestore: $error',
+                  allowNullData: true,
+                );
+                if (state != null) {
+                  return Scaffold(body: state);
+                }
+                final profile = profileSnapshot.requireData;
+                if (profile == null) {
                   return const Scaffold(
-                    body: LoadingState(label: 'Memuat hak akses...'),
+                    body: ErrorState(
+                      message: 'Dokumen profil pengguna tidak ditemukan.',
+                    ),
                   );
                 }
-                final profile = profileSnapshot.data!;
                 if (!profile.isActive) {
                   return _InactiveAccount(authService: _authService);
                 }

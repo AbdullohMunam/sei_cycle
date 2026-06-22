@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/farm_modules.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/operation_feedback.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
 import '../../../core/widgets/feature_page.dart';
+import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
 import '../models/logbook_entry.dart';
 import '../services/logbook_service.dart';
@@ -33,17 +36,23 @@ class _LogbookScreenState extends State<LogbookScreen> {
       context: context,
       builder: (_) => _LogbookFormDialog(entry: entry),
     );
-    if (value == null) return;
-    await _service.save(
-      id: entry?.id,
-      moduleId: value.moduleId,
-      activityType: value.activityType,
-      activityDate: value.activityDate,
-      quantity: value.quantity,
-      unit: value.unit,
-      condition: value.condition,
-      note: value.note,
-      userId: widget.profile.uid,
+    if (value == null || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.save(
+        id: entry?.id,
+        moduleId: value.moduleId,
+        activityType: value.activityType,
+        activityDate: value.activityDate,
+        quantity: value.quantity,
+        unit: value.unit,
+        condition: value.condition,
+        note: value.note,
+        userId: widget.profile.uid,
+      ),
+      successMessage: entry == null
+          ? 'Logbook ditambahkan.'
+          : 'Logbook diperbarui.',
     );
   }
 
@@ -53,7 +62,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Hapus catatan?'),
         content: const Text(
-          'Catatan akan disembunyikan dengan soft delete dan tetap tersimpan.',
+          'Catatan akan disembunyikan dari logbook, tetapi tetap tersimpan sebagai arsip.',
         ),
         actions: [
           TextButton(
@@ -62,12 +71,19 @@ class _LogbookScreenState extends State<LogbookScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Hapus'),
           ),
         ],
       ),
     );
-    if (confirmed == true) await _service.softDelete(entry.id);
+    if (confirmed == true && mounted) {
+      await runOperationWithFeedback(
+        context,
+        operation: () => _service.softDelete(entry.id),
+        successMessage: 'Logbook dihapus.',
+      );
+    }
   }
 
   Future<void> _pickDate() async {
@@ -84,27 +100,25 @@ class _LogbookScreenState extends State<LogbookScreen> {
   Widget build(BuildContext context) {
     return FeaturePage(
       title: 'Logbook Operasional',
-      subtitle: 'Catatan Ayam, Maggot, Cacing, Lele, dan Tanaman.',
+      subtitle: 'Catatan harian Ayam, Maggot, Cacing, Lele, dan Tanaman.',
       actions: [
         if (widget.profile.canManageOperations)
           FilledButton.icon(
             onPressed: _openForm,
             icon: const Icon(Icons.add),
-            label: const Text('Tambah'),
+            label: const Text('Tambah catatan'),
           ),
       ],
       child: Column(
         children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 220,
-                child: DropdownButtonFormField<String?>(
+          AppCard(
+            padding: const EdgeInsets.all(12),
+            child: ResponsiveFormRow(
+              breakpoint: 560,
+              children: [
+                DropdownButtonFormField<String?>(
                   initialValue: _moduleId,
-                  decoration: const InputDecoration(labelText: 'Modul'),
+                  decoration: const InputDecoration(labelText: 'Modul kebun'),
                   items: [
                     const DropdownMenuItem(
                       value: null,
@@ -118,86 +132,178 @@ class _LogbookScreenState extends State<LogbookScreen> {
                   ],
                   onChanged: (value) => setState(() => _moduleId = value),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _pickDate,
-                icon: const Icon(Icons.calendar_today_outlined),
-                label: Text(
-                  _date == null
-                      ? 'Semua tanggal'
-                      : shortDateFormat.format(_date!),
+                OutlinedButton.icon(
+                  onPressed: _pickDate,
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  label: Text(
+                    _date == null
+                        ? 'Semua tanggal'
+                        : shortDateFormat.format(_date!),
+                  ),
                 ),
-              ),
-              if (_date != null)
-                IconButton(
-                  onPressed: () => setState(() => _date = null),
-                  icon: const Icon(Icons.clear),
-                  tooltip: 'Hapus filter tanggal',
-                ),
-            ],
+              ],
+            ),
           ),
+          if (_date != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _date = null),
+                icon: const Icon(Icons.close_rounded, size: 17),
+                label: const Text('Hapus filter tanggal'),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Expanded(
             child: StreamBuilder<List<LogbookEntry>>(
               stream: _service.watchEntries(moduleId: _moduleId, date: _date),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const LoadingState();
-                if (snapshot.hasError) {
-                  return ErrorState(message: '${snapshot.error}');
-                }
-                final entries = snapshot.data!;
+                final state = asyncSnapshotState(snapshot);
+                if (state != null) return state;
+                final entries = snapshot.requireData;
                 if (entries.isEmpty) {
                   return const EmptyState(
-                    title: 'Belum ada logbook',
-                    message: 'Tambahkan catatan operasional pertama.',
+                    title: 'Belum ada aktivitas pada filter ini',
+                    message:
+                        'Data akan muncul setelah pencatatan operasional pertama dibuat.',
                     icon: Icons.menu_book_outlined,
                   );
                 }
                 return ListView.separated(
                   itemCount: entries.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final entry = entries[index];
-                    return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          child: Text(
-                            FarmModules.nameOf(entry.moduleId).substring(0, 1),
-                          ),
-                        ),
-                        title: Text(entry.activityType),
-                        subtitle: Text(
-                          '${FarmModules.nameOf(entry.moduleId)} · '
-                          '${shortDateFormat.format(entry.activityDate)}\n'
-                          '${_number(entry.quantity)} ${entry.unit} · '
-                          '${entry.condition}',
-                        ),
-                        isThreeLine: true,
-                        trailing: widget.profile.canManageOperations
-                            ? PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'edit') _openForm(entry);
-                                  if (value == 'delete') _delete(entry);
-                                },
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text('Edit'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text('Soft delete'),
-                                  ),
-                                ],
-                              )
-                            : null,
-                      ),
-                    );
-                  },
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) => _LogbookEntryCard(
+                    entry: entries[index],
+                    canEdit: widget.profile.canManageOperations,
+                    onEdit: () => _openForm(entries[index]),
+                    onDelete: () => _delete(entries[index]),
+                  ),
                 );
               },
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogbookEntryCard extends StatelessWidget {
+  const _LogbookEntryCard({
+    required this.entry,
+    required this.canEdit,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final LogbookEntry entry;
+  final bool canEdit;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _moduleColor(entry.moduleId);
+    final moduleName = FarmModules.nameOf(entry.moduleId);
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIconBox(icon: _moduleIcon(entry.moduleId), color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entry.activityType,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    StatusBadge(label: moduleName, color: color),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      shortDateFormat.format(entry.activityDate),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    StatusBadge(
+                      label: '${_number(entry.quantity)} ${entry.unit}',
+                      color: AppColors.primaryGreen,
+                      icon: Icons.straighten_outlined,
+                    ),
+                    StatusBadge(
+                      label: entry.condition,
+                      color: AppColors.info,
+                      icon: Icons.health_and_safety_outlined,
+                    ),
+                  ],
+                ),
+                if (entry.note.trim().isNotEmpty) ...[
+                  const SizedBox(height: 9),
+                  Text(
+                    entry.note,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (canEdit)
+            PopupMenuButton<String>(
+              tooltip: 'Opsi catatan',
+              onSelected: (value) {
+                if (value == 'edit') onEdit();
+                if (value == 'delete') onDelete();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.edit_outlined),
+                    title: Text('Edit catatan'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.delete_outline, color: AppColors.error),
+                    title: Text('Hapus catatan'),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -298,7 +404,7 @@ class _LogbookFormDialogState extends State<_LogbookFormDialog> {
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: _moduleId,
-                  decoration: const InputDecoration(labelText: 'Modul'),
+                  decoration: const InputDecoration(labelText: 'Modul kebun'),
                   items: [
                     for (final module in FarmModules.values)
                       DropdownMenuItem(
@@ -313,15 +419,16 @@ class _LogbookFormDialogState extends State<_LogbookFormDialog> {
                   controller: _activityType,
                   decoration: const InputDecoration(
                     labelText: 'Jenis aktivitas',
+                    hintText: 'Contoh: pemberian pakan pagi',
                   ),
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Tanggal aktivitas'),
-                  subtitle: Text(shortDateFormat.format(_activityDate)),
-                  trailing: const Icon(Icons.calendar_today),
+                AppMenuCard(
+                  icon: Icons.calendar_today_outlined,
+                  title: 'Tanggal aktivitas',
+                  subtitle: shortDateFormat.format(_activityDate),
+                  trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -334,45 +441,51 @@ class _LogbookFormDialogState extends State<_LogbookFormDialog> {
                     }
                   },
                 ),
-                Row(
+                const SizedBox(height: 12),
+                ResponsiveFormRow(
                   children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _quantity,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(labelText: 'Jumlah'),
-                        validator: (value) =>
-                            double.tryParse(
-                                  (value ?? '').replaceAll(',', '.'),
-                                ) ==
-                                null
-                            ? 'Angka tidak valid'
-                            : null,
+                    TextFormField(
+                      controller: _quantity,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
+                      decoration: const InputDecoration(labelText: 'Jumlah'),
+                      validator: (value) {
+                        final quantity = double.tryParse(
+                          (value ?? '').replaceAll(',', '.'),
+                        );
+                        return quantity == null || quantity <= 0
+                            ? 'Jumlah harus lebih dari 0'
+                            : null;
+                      },
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _unit,
-                        decoration: const InputDecoration(labelText: 'Satuan'),
-                        validator: _required,
+                    TextFormField(
+                      controller: _unit,
+                      decoration: const InputDecoration(
+                        labelText: 'Satuan',
+                        hintText: 'kg, liter, ekor',
                       ),
+                      validator: _required,
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _condition,
-                  decoration: const InputDecoration(labelText: 'Kondisi'),
+                  decoration: const InputDecoration(
+                    labelText: 'Kondisi',
+                    hintText: 'Baik, perlu dipantau, atau lainnya',
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _note,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Catatan'),
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan',
+                    hintText: 'Temuan atau tindak lanjut (opsional)',
+                  ),
                 ),
               ],
             ),
@@ -389,6 +502,24 @@ class _LogbookFormDialogState extends State<_LogbookFormDialog> {
     );
   }
 }
+
+Color _moduleColor(String moduleId) => switch (moduleId) {
+  'ayam_kampung' => AppColors.warning,
+  'maggot_bsf' => AppColors.accentBrown,
+  'cacing_tanah' => AppColors.primaryGreen,
+  'lele' => AppColors.info,
+  'tanaman' => AppColors.success,
+  _ => AppColors.textMuted,
+};
+
+IconData _moduleIcon(String moduleId) => switch (moduleId) {
+  'ayam_kampung' => Icons.egg_alt_outlined,
+  'maggot_bsf' => Icons.pest_control_outlined,
+  'cacing_tanah' => Icons.grass_outlined,
+  'lele' => Icons.water_drop_outlined,
+  'tanaman' => Icons.eco_outlined,
+  _ => Icons.category_outlined,
+};
 
 String? _required(String? value) =>
     value == null || value.trim().isEmpty ? 'Wajib diisi' : null;

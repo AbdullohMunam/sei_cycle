@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/farm_modules.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/operation_feedback.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
 import '../../../core/widgets/feature_page.dart';
+import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
 import '../models/schedule_item.dart';
 import '../services/schedule_service.dart';
@@ -32,16 +35,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       context: context,
       builder: (_) => _ScheduleFormDialog(item: item),
     );
-    if (value == null) return;
-    await _service.save(
-      id: item?.id,
-      title: value.title,
-      moduleId: value.moduleId,
-      scheduleType: value.scheduleType,
-      scheduledAt: value.scheduledAt,
-      status: value.status,
-      note: value.note,
-      userId: widget.profile.uid,
+    if (value == null || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.save(
+        id: item?.id,
+        title: value.title,
+        moduleId: value.moduleId,
+        scheduleType: value.scheduleType,
+        scheduledAt: value.scheduledAt,
+        status: value.status,
+        note: value.note,
+        userId: widget.profile.uid,
+      ),
+      successMessage: item == null
+          ? 'Jadwal ditambahkan.'
+          : 'Jadwal diperbarui.',
     );
   }
 
@@ -55,11 +64,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (result != null) setState(() => _date = result);
   }
 
+  Future<void> _updateStatus(ScheduleItem item, String status) async {
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.updateStatus(item.id, status),
+      successMessage: 'Status jadwal diperbarui.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FeaturePage(
       title: 'Kalender Operasional',
-      subtitle: 'Jadwal pakan, perawatan, pemupukan, dan panen.',
+      subtitle: 'Jadwal pakan, perawatan, pemupukan, dan panen Kebun Sei.',
       actions: [
         if (widget.profile.canManageOperations)
           FilledButton.icon(
@@ -70,89 +87,90 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ],
       child: Column(
         children: [
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: _pickFilterDate,
-                icon: const Icon(Icons.calendar_today),
-                label: Text(
-                  _date == null
-                      ? 'Semua tanggal'
-                      : shortDateFormat.format(_date!),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: ResponsiveFormRow(
+              breakpoint: 560,
+              children: [
+                Row(
+                  children: [
+                    const AppIconBox(
+                      icon: Icons.calendar_month_outlined,
+                      color: AppColors.primaryGreen,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _date == null
+                                ? 'Semua jadwal operasional'
+                                : shortDateFormat.format(_date!),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _date == null
+                                ? 'Pilih tanggal untuk melihat agenda tertentu.'
+                                : 'Menampilkan agenda pada tanggal yang dipilih.',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppColors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              if (_date != null)
-                IconButton(
-                  onPressed: () => setState(() => _date = null),
-                  icon: const Icon(Icons.clear),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _pickFilterDate,
+                        icon: const Icon(Icons.date_range_outlined),
+                        label: Text(_date == null ? 'Pilih tanggal' : 'Ganti'),
+                      ),
+                    ),
+                    if (_date != null) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () => setState(() => _date = null),
+                        icon: const Icon(Icons.close_rounded),
+                        tooltip: 'Hapus filter tanggal',
+                      ),
+                    ],
+                  ],
                 ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Expanded(
             child: StreamBuilder<List<ScheduleItem>>(
               stream: _service.watchSchedules(date: _date),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const LoadingState();
-                if (snapshot.hasError) {
-                  return ErrorState(message: '${snapshot.error}');
-                }
-                final schedules = snapshot.data!;
+                final state = asyncSnapshotState(snapshot);
+                if (state != null) return state;
+                final schedules = snapshot.requireData;
                 if (schedules.isEmpty) {
                   return const EmptyState(
-                    title: 'Belum ada jadwal',
-                    message: 'Tambahkan pengingat operasional Kebun Sei.',
+                    title: 'Belum ada agenda pada periode ini',
+                    message:
+                        'Jadwal akan muncul setelah pengingat operasional pertama dibuat.',
                     icon: Icons.event_note_outlined,
                   );
                 }
                 return ListView.separated(
                   itemCount: schedules.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final item = schedules[index];
-                    return Card(
-                      child: ListTile(
-                        leading: _StatusIcon(status: item.status),
-                        title: Text(item.title),
-                        subtitle: Text(
-                          '${FarmModules.nameOf(item.moduleId)} · '
-                          '${dateTimeFormat.format(item.scheduledAt)}\n'
-                          '${item.scheduleType} · ${item.note}',
-                        ),
-                        isThreeLine: true,
-                        trailing: widget.profile.canManageOperations
-                            ? PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'edit') {
-                                    _openForm(item);
-                                  } else {
-                                    _service.updateStatus(item.id, value);
-                                  }
-                                },
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'pending',
-                                    child: Text('Tandai pending'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'done',
-                                    child: Text('Tandai selesai'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'skipped',
-                                    child: Text('Tandai dilewati'),
-                                  ),
-                                  PopupMenuDivider(),
-                                  PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text('Edit'),
-                                  ),
-                                ],
-                              )
-                            : Chip(label: Text(item.status)),
-                      ),
-                    );
-                  },
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) => _ScheduleCard(
+                    item: schedules[index],
+                    canEdit: widget.profile.canManageOperations,
+                    onEdit: () => _openForm(schedules[index]),
+                    onStatusChanged: (status) =>
+                        _updateStatus(schedules[index], status),
+                  ),
                 );
               },
             ),
@@ -163,22 +181,106 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 }
 
-class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.status});
+class _ScheduleCard extends StatelessWidget {
+  const _ScheduleCard({
+    required this.item,
+    required this.canEdit,
+    required this.onEdit,
+    required this.onStatusChanged,
+  });
 
-  final String status;
+  final ScheduleItem item;
+  final bool canEdit;
+  final VoidCallback onEdit;
+  final ValueChanged<String> onStatusChanged;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color) = switch (status) {
-      'done' => (Icons.check_circle, Colors.green),
-      'skipped' => (Icons.skip_next, Colors.grey),
-      _ => (Icons.schedule, Colors.orange),
-    };
-    return CircleAvatar(
-      backgroundColor: color.withValues(alpha: 0.12),
-      foregroundColor: color,
-      child: Icon(icon),
+    final color = _statusColor(item.status);
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIconBox(icon: _statusIcon(item.status), color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    StatusBadge(
+                      label: _statusLabel(item.status),
+                      color: color,
+                      icon: _statusIcon(item.status),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  dateTimeFormat.format(item.scheduledAt),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    StatusBadge(
+                      label: FarmModules.nameOf(item.moduleId),
+                      color: AppColors.primaryGreen,
+                    ),
+                    StatusBadge(
+                      label: item.scheduleType,
+                      color: AppColors.info,
+                    ),
+                  ],
+                ),
+                if (item.note.trim().isNotEmpty) ...[
+                  const SizedBox(height: 9),
+                  Text(
+                    item.note,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (canEdit)
+            PopupMenuButton<String>(
+              tooltip: 'Opsi jadwal',
+              onSelected: (value) {
+                if (value == 'edit') {
+                  onEdit();
+                } else {
+                  onStatusChanged(value);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'pending', child: Text('Tandai menunggu')),
+                PopupMenuItem(value: 'done', child: Text('Tandai selesai')),
+                PopupMenuItem(value: 'skipped', child: Text('Tandai dilewati')),
+                PopupMenuDivider(),
+                PopupMenuItem(value: 'edit', child: Text('Edit jadwal')),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
@@ -292,13 +394,16 @@ class _ScheduleFormDialogState extends State<_ScheduleFormDialog> {
               children: [
                 TextFormField(
                   controller: _title,
-                  decoration: const InputDecoration(labelText: 'Judul'),
+                  decoration: const InputDecoration(
+                    labelText: 'Judul agenda',
+                    hintText: 'Contoh: pakan lele sore',
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _moduleId,
-                  decoration: const InputDecoration(labelText: 'Modul'),
+                  decoration: const InputDecoration(labelText: 'Modul kebun'),
                   items: [
                     for (final module in FarmModules.values)
                       DropdownMenuItem(
@@ -311,22 +416,26 @@ class _ScheduleFormDialogState extends State<_ScheduleFormDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _type,
-                  decoration: const InputDecoration(labelText: 'Jenis jadwal'),
+                  decoration: const InputDecoration(
+                    labelText: 'Jenis jadwal',
+                    hintText: 'Pakan, perawatan, panen, atau lainnya',
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Waktu pelaksanaan'),
-                  subtitle: Text(dateTimeFormat.format(_scheduledAt)),
-                  trailing: const Icon(Icons.edit_calendar),
+                AppMenuCard(
+                  icon: Icons.edit_calendar_outlined,
+                  title: 'Waktu pelaksanaan',
+                  subtitle: dateTimeFormat.format(_scheduledAt),
+                  trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: _pickDateTime,
                 ),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                    DropdownMenuItem(value: 'pending', child: Text('Menunggu')),
                     DropdownMenuItem(value: 'done', child: Text('Selesai')),
                     DropdownMenuItem(value: 'skipped', child: Text('Dilewati')),
                   ],
@@ -336,7 +445,10 @@ class _ScheduleFormDialogState extends State<_ScheduleFormDialog> {
                 TextFormField(
                   controller: _note,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Catatan'),
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan',
+                    hintText: 'Detail pelaksanaan atau kebutuhan (opsional)',
+                  ),
                 ),
               ],
             ),
@@ -353,6 +465,24 @@ class _ScheduleFormDialogState extends State<_ScheduleFormDialog> {
     );
   }
 }
+
+Color _statusColor(String status) => switch (status) {
+  'done' => AppColors.success,
+  'skipped' => AppColors.textMuted,
+  _ => AppColors.warning,
+};
+
+IconData _statusIcon(String status) => switch (status) {
+  'done' => Icons.check_circle_outline,
+  'skipped' => Icons.skip_next_outlined,
+  _ => Icons.schedule_outlined,
+};
+
+String _statusLabel(String status) => switch (status) {
+  'done' => 'Selesai',
+  'skipped' => 'Dilewati',
+  _ => 'Menunggu',
+};
 
 String? _required(String? value) =>
     value == null || value.trim().isEmpty ? 'Wajib diisi' : null;
