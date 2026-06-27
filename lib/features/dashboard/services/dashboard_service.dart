@@ -17,18 +17,22 @@ class DashboardService {
 
     final logbookFuture = _firestore
         .collection(FirestoreCollections.logbooks)
+        .where('isDeleted', isEqualTo: false)
         .where(
-          'activity_date',
+          'activityDate',
           isGreaterThanOrEqualTo: Timestamp.fromDate(chartStart),
         )
-        .where('activity_date', isLessThan: Timestamp.fromDate(tomorrow))
+        .where('activityDate', isLessThan: Timestamp.fromDate(tomorrow))
+        .orderBy('activityDate')
         .get();
     final inventoryFuture = _firestore
-        .collection(FirestoreCollections.inventoryItems)
-        .where('is_low_stock', isEqualTo: true)
+        .collection(FirestoreCollections.inventory)
+        .where('isDeleted', isEqualTo: false)
+        .where('isLowStock', isEqualTo: true)
         .get();
     final scheduleFuture = _firestore
         .collection(FirestoreCollections.schedules)
+        .where('isDeleted', isEqualTo: false)
         .where('status', isEqualTo: 'pending')
         .get();
 
@@ -37,16 +41,14 @@ class DashboardService {
       inventoryFuture,
       scheduleFuture,
     ]);
-    final logbooks = results[0].docs
-        .where((doc) => doc.data()['is_deleted'] != true)
-        .toList();
+    final logbooks = results[0].docs;
 
     final counts = <DateTime, int>{
       for (var i = 0; i < 7; i++) chartStart.add(Duration(days: i)): 0,
     };
     var todayLogbooks = 0;
     for (final document in logbooks) {
-      final timestamp = document.data()['activity_date'];
+      final timestamp = document.data()['activityDate'];
       if (timestamp is! Timestamp) continue;
       final value = timestamp.toDate();
       final day = DateTime(value.year, value.month, value.day);
@@ -58,7 +60,9 @@ class DashboardService {
     var totalExpense = 0.0;
     if (includeFinance) {
       final financeSnapshot = await _firestore
-          .collection(FirestoreCollections.financeRecords)
+          .collection(FirestoreCollections.financeTransactions)
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('date', descending: true)
           .get();
       for (final document in financeSnapshot.docs) {
         final data = document.data();

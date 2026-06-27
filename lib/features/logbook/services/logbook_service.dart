@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/farm_modules.dart';
 import '../../../core/constants/firestore_collections.dart';
+import '../../../core/utils/firestore_validators.dart';
 import '../models/logbook_entry.dart';
 
 class LogbookService {
@@ -16,22 +18,32 @@ class LogbookService {
       _firestore.collection(FirestoreCollections.logbooks);
 
   Stream<List<LogbookEntry>> watchEntries({String? moduleId, DateTime? date}) {
-    return _collection.snapshots().map((snapshot) {
-      final entries =
-          snapshot.docs
-              .map(LogbookEntry.fromDocument)
-              .where((entry) => !entry.isDeleted)
-              .where((entry) => moduleId == null || entry.moduleId == moduleId)
-              .where((entry) {
-                if (date == null) return true;
-                return entry.activityDate.year == date.year &&
-                    entry.activityDate.month == date.month &&
-                    entry.activityDate.day == date.day;
-              })
-              .toList()
-            ..sort((a, b) => b.activityDate.compareTo(a.activityDate));
-      return entries;
-    });
+    Query<Map<String, dynamic>> query = _collection.where(
+      'isDeleted',
+      isEqualTo: false,
+    );
+
+    if (moduleId != null) {
+      query = query.where('moduleType', isEqualTo: moduleId);
+    }
+
+    if (date != null) {
+      final start = DateTime(date.year, date.month, date.day);
+      final end = start.add(const Duration(days: 1));
+      query = query
+          .where(
+            'activityDate',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+          )
+          .where('activityDate', isLessThan: Timestamp.fromDate(end));
+    }
+
+    return query
+        .orderBy('activityDate', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map(LogbookEntry.fromDocument).toList(),
+        );
   }
 
   Future<void> save({
@@ -45,30 +57,64 @@ class LogbookService {
     required String note,
     required String userId,
   }) async {
+    _validateSave(
+      moduleId: moduleId,
+      activityType: activityType,
+      quantity: quantity,
+      unit: unit,
+      condition: condition,
+      userId: userId,
+    );
+
     final documentId = id ?? _uuid.v4();
+    final now = FieldValue.serverTimestamp();
     final data = <String, dynamic>{
       'id': documentId,
-      'module_id': moduleId,
-      'activity_type': activityType.trim(),
-      'activity_date': Timestamp.fromDate(activityDate),
+      'title': activityType.trim(),
+      'moduleType': moduleId,
+      'activityDate': Timestamp.fromDate(activityDate),
       'quantity': quantity,
       'unit': unit.trim(),
-      'condition': condition.trim(),
-      'note': note.trim(),
-      'updated_at': FieldValue.serverTimestamp(),
-      'is_deleted': false,
+      'status': condition.trim(),
+      'notes': note.trim(),
+      'updatedBy': userId,
+      'updatedAt': now,
+      'isDeleted': false,
     };
     if (id == null) {
-      data['created_by'] = userId;
-      data['created_at'] = FieldValue.serverTimestamp();
+      data['createdBy'] = userId;
+      data['createdAt'] = now;
     }
     await _collection.doc(documentId).set(data, SetOptions(merge: true));
   }
 
-  Future<void> softDelete(String id) {
+  Future<void> softDelete(String id, {required String userId}) {
+    requireTrimmed(id, 'id');
+    requireTrimmed(userId, 'userId');
     return _collection.doc(id).update({
-      'is_deleted': true,
-      'updated_at': FieldValue.serverTimestamp(),
+      'isDeleted': true,
+      'updatedBy': userId,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  void _validateSave({
+    required String moduleId,
+    required String activityType,
+    required double quantity,
+    required String unit,
+    required String condition,
+    required String userId,
+  }) {
+    requireOneOf(
+      moduleId,
+      FarmModules.values.map((module) => module.id).toSet(),
+      'moduleType',
+    );
+    requireTrimmed(activityType, 'title');
+    requirePositive(quantity, 'quantity');
+    requireTrimmed(unit, 'unit');
+    requireTrimmed(condition, 'status');
+    requireTrimmed(userId, 'userId');
   }
 }

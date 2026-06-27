@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/farm_modules.dart';
 import '../../../core/constants/firestore_collections.dart';
+import '../../../core/utils/firestore_validators.dart';
 import '../models/schedule_item.dart';
 
 class ScheduleService {
@@ -12,21 +14,31 @@ class ScheduleService {
   final FirebaseFirestore _firestore;
   final Uuid _uuid;
 
+  static const _validStatuses = {'pending', 'done', 'skipped'};
+
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection(FirestoreCollections.schedules);
 
   Stream<List<ScheduleItem>> watchSchedules({DateTime? date}) {
-    return _collection.snapshots().map((snapshot) {
-      final schedules = snapshot.docs.map(ScheduleItem.fromDocument).where((
-        item,
-      ) {
-        if (date == null) return true;
-        return item.scheduledAt.year == date.year &&
-            item.scheduledAt.month == date.month &&
-            item.scheduledAt.day == date.day;
-      }).toList()..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-      return schedules;
-    });
+    Query<Map<String, dynamic>> query = _collection.where(
+      'isDeleted',
+      isEqualTo: false,
+    );
+
+    if (date != null) {
+      final start = DateTime(date.year, date.month, date.day);
+      final end = start.add(const Duration(days: 1));
+      query = query
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where('date', isLessThan: Timestamp.fromDate(end));
+    }
+
+    return query
+        .orderBy('date')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map(ScheduleItem.fromDocument).toList(),
+        );
   }
 
   Future<void> save({
@@ -39,32 +51,75 @@ class ScheduleService {
     required String note,
     required String userId,
   }) async {
+    _validateSave(
+      title: title,
+      moduleId: moduleId,
+      scheduleType: scheduleType,
+      status: status,
+      userId: userId,
+    );
+
     final documentId = id ?? _uuid.v4();
+    final now = FieldValue.serverTimestamp();
     final data = <String, dynamic>{
       'id': documentId,
       'title': title.trim(),
-      'module_id': moduleId,
-      'schedule_type': scheduleType.trim(),
-      'scheduled_at': Timestamp.fromDate(scheduledAt),
+      'moduleType': moduleId,
+      'type': scheduleType.trim(),
+      'date': Timestamp.fromDate(scheduledAt),
       'status': status,
-      'note': note.trim(),
-      'updated_at': FieldValue.serverTimestamp(),
+      'notes': note.trim(),
+      'updatedBy': userId,
+      'updatedAt': now,
+      'isDeleted': false,
     };
     if (id == null) {
-      data['created_by'] = userId;
-      data['created_at'] = FieldValue.serverTimestamp();
+      data['createdBy'] = userId;
+      data['createdAt'] = now;
     }
     await _collection.doc(documentId).set(data, SetOptions(merge: true));
   }
 
-  Future<void> updateStatus(String id, String status) {
+  Future<void> updateStatus(
+    String id,
+    String status, {
+    required String userId,
+  }) {
+    requireTrimmed(id, 'id');
+    requireTrimmed(userId, 'userId');
+    requireOneOf(status, _validStatuses, 'status');
     return _collection.doc(id).update({
       'status': status,
-      'updated_at': FieldValue.serverTimestamp(),
+      'updatedBy': userId,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> delete(String id) {
-    return _collection.doc(id).delete();
+  Future<void> delete(String id, {required String userId}) {
+    requireTrimmed(id, 'id');
+    requireTrimmed(userId, 'userId');
+    return _collection.doc(id).update({
+      'isDeleted': true,
+      'updatedBy': userId,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  void _validateSave({
+    required String title,
+    required String moduleId,
+    required String scheduleType,
+    required String status,
+    required String userId,
+  }) {
+    requireTrimmed(title, 'title');
+    requireOneOf(
+      moduleId,
+      FarmModules.values.map((module) => module.id).toSet(),
+      'moduleType',
+    );
+    requireTrimmed(scheduleType, 'type');
+    requireOneOf(status, _validStatuses, 'status');
+    requireTrimmed(userId, 'userId');
   }
 }

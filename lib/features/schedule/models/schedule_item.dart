@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../core/utils/firestore_dates.dart';
+import '../../../core/utils/firestore_fields.dart';
 
 class ScheduleItem {
   const ScheduleItem({
@@ -12,8 +12,10 @@ class ScheduleItem {
     required this.status,
     required this.note,
     required this.createdBy,
+    required this.updatedBy,
     required this.createdAt,
     required this.updatedAt,
+    required this.isDeleted,
   });
 
   final String id;
@@ -24,24 +26,49 @@ class ScheduleItem {
   final String status;
   final String note;
   final String createdBy;
+  final String updatedBy;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isDeleted;
 
   factory ScheduleItem.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
   ) {
     final data = document.data() ?? const <String, dynamic>{};
     return ScheduleItem(
-      id: data['id'] as String? ?? document.id,
-      title: data['title'] as String? ?? '',
-      moduleId: data['module_id'] as String? ?? '',
-      scheduleType: data['schedule_type'] as String? ?? '',
-      scheduledAt: dateTimeFromFirestore(data['scheduled_at']),
-      status: data['status'] as String? ?? 'pending',
-      note: data['note'] as String? ?? '',
-      createdBy: data['created_by'] as String? ?? '',
-      createdAt: dateTimeFromFirestore(data['created_at']),
-      updatedAt: dateTimeFromFirestore(data['updated_at']),
+      id: stringField(data, const ['id'], fallback: document.id),
+      title: stringField(data, const ['title']),
+      moduleId: stringField(data, const ['moduleType', 'module_id']),
+      scheduleType: stringField(data, const ['type', 'schedule_type']),
+      scheduledAt: dateTimeField(data, const [
+        'date',
+        'scheduledAt',
+        'scheduled_at',
+      ]),
+      status: stringField(data, const ['status'], fallback: 'pending'),
+      note: stringField(data, const ['notes', 'note']),
+      createdBy: stringField(data, const ['createdBy', 'created_by']),
+      updatedBy: stringField(data, const ['updatedBy', 'updated_by']),
+      createdAt: dateTimeField(data, const ['createdAt', 'created_at']),
+      updatedAt: dateTimeField(data, const ['updatedAt', 'updated_at']),
+      isDeleted: boolField(data, const ['isDeleted', 'is_deleted']),
     );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'title': title,
+      'moduleType': moduleId,
+      'type': scheduleType,
+      'date': Timestamp.fromDate(scheduledAt),
+      'status': status,
+      'notes': note,
+      'createdBy': createdBy,
+      'updatedBy': updatedBy,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      'isDeleted': isDeleted,
+    };
   }
 }

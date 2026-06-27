@@ -11,7 +11,9 @@ service cloud.firestore {
     }
 
     function activeUser() {
-      return signedIn() && currentUser().data.is_active != false;
+      return signedIn()
+        && currentUser().data.isActive != false
+        && currentUser().data.is_active != false;
     }
 
     function profileRole() {
@@ -62,17 +64,31 @@ service cloud.firestore {
       ];
     }
 
+    function createsOwnDocument(documentId) {
+      return request.resource.data.id == documentId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.isDeleted == false;
+    }
+
+    function updatesExistingDocument() {
+      return request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
 
     match /users/{uid} {
       allow create: if (
         signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
+        && request.resource.data.id == uid
         && request.resource.data.role == 'operator_lapangan'
-        && request.resource.data.is_active == true
+        && request.resource.data.isActive == true
       ) || (
         isAdmin()
         && request.resource.data.uid == uid
+        && request.resource.data.id == uid
         && supportedRole(request.resource.data.role)
       );
 
@@ -87,16 +103,18 @@ service cloud.firestore {
         signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
+        && request.resource.data.id == uid
         && request.resource.data.role == resource.data.role
-        && request.resource.data.is_active == resource.data.is_active
+        && request.resource.data.isActive == resource.data.isActive
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'id',
           'uid',
           'name',
           'email',
-          'photo_url',
+          'photoUrl',
           'role',
-          'is_active',
-          'updated_at'
+          'isActive',
+          'updatedAt'
         ])
       );
 
@@ -110,58 +128,64 @@ service cloud.firestore {
 
     match /logbooks/{logbookId} {
       allow read: if activeUser();
-      allow create: if canManageOperations()
-        && request.resource.data.id == logbookId
-        && request.resource.data.created_by == request.auth.uid
-        && request.resource.data.is_deleted == false;
+      allow create: if canManageOperations() && createsOwnDocument(logbookId);
       allow update: if canManageOperations()
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.created_by == resource.data.created_by
-        && (
-          isAdmin()
-          || request.resource.data.is_deleted == resource.data.is_deleted
-        );
+        && updatesExistingDocument()
+        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
       allow delete: if isAdmin();
     }
 
-    match /inventory_items/{itemId} {
+    match /inventory/{itemId} {
       allow read: if activeUser();
-      allow create: if canManageOperations()
-        && request.resource.data.id == itemId
-        && request.resource.data.created_by == request.auth.uid;
+      allow create: if canManageOperations() && createsOwnDocument(itemId);
       allow update: if canManageOperations()
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.created_by == resource.data.created_by;
+        && updatesExistingDocument()
+        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
       allow delete: if isAdmin();
     }
 
     match /schedules/{scheduleId} {
       allow read: if activeUser();
-      allow create: if canManageOperations()
-        && request.resource.data.id == scheduleId
-        && request.resource.data.created_by == request.auth.uid;
+      allow create: if canManageOperations() && createsOwnDocument(scheduleId);
       allow update: if canManageOperations()
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.created_by == resource.data.created_by;
+        && updatesExistingDocument()
+        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
       allow delete: if isAdmin();
     }
 
     match /education_contents/{contentId} {
       allow read: if activeUser() && (
-        resource.data.is_published == true || isAdmin()
+        resource.data.isPublished == true || isAdmin()
       );
-      allow write: if isAdmin();
+      allow create: if isAdmin() && createsOwnDocument(contentId);
+      allow update: if isAdmin() && updatesExistingDocument();
+      allow delete: if isAdmin();
     }
 
-    match /finance_records/{recordId} {
+    match /finance_transactions/{transactionId} {
       allow read: if activeUser();
-      allow create: if canManageFinance()
-        && request.resource.data.id == recordId
-        && request.resource.data.created_by == request.auth.uid;
+      allow create: if canManageFinance() && createsOwnDocument(transactionId);
       allow update: if canManageFinance()
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.created_by == resource.data.created_by;
+        && updatesExistingDocument()
+        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
       allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if activeUser() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /report_metadata/{reportId} {
+      allow read: if activeUser();
+      allow write: if isAdmin() || isOperatorKeuangan();
+    }
+
+    match /recommendations/{recommendationId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
     }
 
     match /{document=**} {

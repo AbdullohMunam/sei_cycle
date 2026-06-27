@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_fields.dart';
+
 class FarmModule {
   const FarmModule({
     required this.id,
@@ -24,13 +26,38 @@ class FarmModule {
   ) {
     final data = document.data() ?? const <String, dynamic>{};
     return FarmModule(
-      id: data['module_id'] as String? ?? document.id,
-      name: data['module_name'] as String? ?? document.id,
-      type: data['module_type'] as String? ?? document.id,
-      description: data['description'] as String? ?? '',
-      icon: data['icon'] as String? ?? 'eco',
-      color: data['color'] as String? ?? '#2D6A27',
-      isActive: data['is_active'] as bool? ?? true,
+      id: stringField(data, const [
+        'id',
+        'moduleType',
+        'module_id',
+      ], fallback: document.id),
+      name: stringField(data, const [
+        'name',
+        'module_name',
+      ], fallback: document.id),
+      type: stringField(data, const [
+        'type',
+        'module_type',
+      ], fallback: document.id),
+      description: stringField(data, const ['description']),
+      icon: stringField(data, const ['icon'], fallback: 'eco'),
+      color: stringField(data, const ['color'], fallback: '#2D6A27'),
+      isActive: boolField(data, const [
+        'isActive',
+        'is_active',
+      ], fallback: true),
     );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'name': name,
+      'type': type,
+      'description': description,
+      'icon': icon,
+      'color': color,
+      'isActive': isActive,
+    };
   }
 }

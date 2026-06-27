@@ -67,7 +67,8 @@ class _LogbookScreenState extends State<LogbookScreen> {
     if (!confirmed || !mounted) return;
     await runOperationWithFeedback(
       context,
-      operation: () => _service.softDelete(entry.id),
+      operation: () =>
+          _service.softDelete(entry.id, userId: widget.profile.uid),
       successMessage: 'Logbook dihapus.',
     );
   }

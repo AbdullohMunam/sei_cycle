@@ -1,44 +1,80 @@
-# Firestore Schema MVP SeiCycle
+# Firestore Schema SeiCycle
 
-Semua timestamp menggunakan Firestore `Timestamp`. ID data operasional dibuat
-di Flutter menggunakan UUID.
+Schema ini adalah kontrak MVP Flutter + Firebase langsung. Tidak ada Firebase Storage, Cloud Functions, atau backend server. Semua timestamp disimpan sebagai Firestore `Timestamp`; data operasional memakai UUID dari Flutter sebagai document ID dan field `id`.
+
+Nama field canonical memakai camelCase. Model Dart masih membaca beberapa field snake_case lama sebagai fallback agar dokumen lama tidak langsung menyebabkan null error, tetapi write baru harus mengikuti schema di bawah.
+
+## Collection Utama
+
+| Collection | Status | Keterangan |
+| --- | --- | --- |
+| `users` | aktif | Profil Firebase Auth dan role aplikasi. |
+| `logbooks` | aktif | Catatan aktivitas operasional per moduleType. |
+| `inventory` | aktif | Stok dan kebutuhan operasional. |
+| `schedules` | aktif | Jadwal operasional dan status pelaksanaan. |
+| `notifications` | didukung | Notifikasi in-app ringan, tanpa FCM server/Cloud Functions. |
+| `education_contents` | aktif | Artikel, video link, dan SOP tanpa Storage. |
+| `finance_transactions` | aktif | Pemasukan/pengeluaran operasional. |
+| `report_metadata` | didukung | Metadata laporan/export di sisi client. |
+| `recommendations` | didukung | Rekomendasi/manual insight yang dibuat admin. |
+
+## Field Umum Dokumen Operasional
+
+Dokumen operasional memakai field berikut bila relevan:
+
+```json
+{
+  "id": "uuid-or-document-id",
+  "title": "Judul dokumen",
+  "name": "Nama item jika bukan berbentuk judul",
+  "description": "Deskripsi panjang jika relevan",
+  "notes": "Catatan tambahan",
+  "status": "pending",
+  "date": "timestamp",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "isDeleted": false
+}
+```
+
+`isDeleted` digunakan untuk soft delete data operasional agar dashboard/laporan bisa mengabaikan data yang disembunyikan tanpa kehilangan audit trail.
 
 ## `users/{uid}`
 
 ```json
 {
+  "id": "firebase-auth-uid",
   "uid": "firebase-auth-uid",
   "name": "Nama Pengguna",
   "email": "user@example.com",
-  "photo_url": "",
+  "photoUrl": "",
   "role": "operator_lapangan",
-  "is_active": true,
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "isActive": true,
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp"
 }
 ```
 
-Role brief yang valid: `admin`, `operator_lapangan`, `operator_keuangan`. Akun
-baru selalu dibuat sebagai `operator_lapangan`; admin atau operator keuangan MVP
-diubah manual melalui Firebase Console. Legacy `operator` dipetakan sebagai
-`operator_lapangan`, sedangkan legacy `mitra` dan `peserta_edukasi` tetap
-read-only untuk dashboard/edukasi.
+Role valid: `admin`, `operator_lapangan`, `operator_keuangan`. Legacy role `operator`, `mitra`, dan `peserta_edukasi` masih dapat dibaca untuk kompatibilitas data lama.
 
-## `farm_modules/{module_id}`
+## `farm_modules/{moduleType}`
+
+Collection pendukung untuk daftar modul tetap.
 
 Document ID: `ayam_kampung`, `maggot_bsf`, `cacing_tanah`, `lele`, `tanaman`.
 
 ```json
 {
-  "module_id": "ayam_kampung",
-  "module_name": "Ayam Kampung",
-  "module_type": "ayam",
-  "description": "Pencatatan aktivitas ayam",
+  "id": "ayam_kampung",
+  "name": "Ayam Kampung",
+  "type": "ayam",
+  "description": "Pencatatan pakan, produksi telur, dan kesehatan ayam.",
   "icon": "egg_alt",
   "color": "#F59E0B",
-  "is_active": true,
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "isActive": true,
+  "updatedAt": "timestamp"
 }
 ```
 
@@ -47,23 +83,24 @@ Document ID: `ayam_kampung`, `maggot_bsf`, `cacing_tanah`, `lele`, `tanaman`.
 ```json
 {
   "id": "uuid",
-  "module_id": "ayam_kampung",
-  "activity_type": "Pemberian pakan",
-  "activity_date": "timestamp",
+  "title": "Pemberian pakan",
+  "moduleType": "ayam_kampung",
+  "activityDate": "timestamp",
   "quantity": 10,
   "unit": "kg",
-  "condition": "Baik",
-  "note": "",
-  "created_by": "uid",
-  "created_at": "timestamp",
-  "updated_at": "timestamp",
-  "is_deleted": false
+  "status": "Baik",
+  "notes": "",
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
 }
 ```
 
-Penghapusan logbook dari UI admin dilakukan dengan mengubah `is_deleted` menjadi `true` agar catatan lama tetap menjadi arsip.
+`moduleType` wajib salah satu dari `ayam_kampung`, `maggot_bsf`, `cacing_tanah`, `lele`, `tanaman`. Query aktif mengabaikan `isDeleted == true` dan mengurutkan `activityDate` terbaru lebih dulu.
 
-## `inventory_items/{id}`
+## `inventory/{id}`
 
 ```json
 {
@@ -71,17 +108,18 @@ Penghapusan logbook dari UI admin dilakukan dengan mengubah `is_deleted` menjadi
   "name": "Pakan ayam",
   "category": "Pakan",
   "unit": "kg",
-  "current_stock": 20,
-  "min_stock": 25,
-  "is_low_stock": true,
-  "created_by": "uid",
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "currentStock": 20,
+  "minStock": 25,
+  "isLowStock": true,
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
 }
 ```
 
-`is_low_stock` dihitung saat simpan karena Firestore tidak membandingkan dua
-field (`current_stock <= min_stock`) dalam query.
+`isLowStock` dihitung saat save karena Firestore tidak dapat membandingkan dua field dalam query (`currentStock <= minStock`).
 
 ## `schedules/{id}`
 
@@ -89,18 +127,38 @@ field (`current_stock <= min_stock`) dalam query.
 {
   "id": "uuid",
   "title": "Pakan lele sore",
-  "module_id": "lele",
-  "schedule_type": "Pakan",
-  "scheduled_at": "timestamp",
+  "moduleType": "lele",
+  "type": "Pakan",
+  "date": "timestamp",
   "status": "pending",
-  "note": "",
-  "created_by": "uid",
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "notes": "",
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
 }
 ```
 
-Status yang valid: `pending`, `done`, `skipped`.
+Status valid: `pending`, `done`, `skipped`.
+
+## `notifications/{id}`
+
+```json
+{
+  "id": "uuid",
+  "userId": "uid",
+  "title": "Stok menipis",
+  "body": "Pakan ayam berada di bawah batas minimum.",
+  "type": "inventory",
+  "status": "unread",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
+}
+```
+
+Collection ini disiapkan untuk notifikasi in-app yang dibuat oleh admin/client. Tidak ada Cloud Functions atau trigger server.
 
 ## `education_contents/{id}`
 
@@ -110,17 +168,19 @@ Status yang valid: `pending`, `done`, `skipped`.
   "title": "Budidaya Maggot BSF",
   "type": "artikel",
   "content": "Isi materi atau SOP...",
-  "external_url": "https://example.com/video",
-  "is_published": true,
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "externalUrl": "https://example.com/video",
+  "isPublished": true,
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
 }
 ```
 
-Tipe yang valid: `artikel`, `video`, `sop`. MVP tidak mengunggah file ke
-Storage.
+Tipe valid: `artikel`, `video`, `sop`. File media tidak diunggah ke Firebase Storage; gunakan URL eksternal bila perlu.
 
-## `finance_records/{id}`
+## `finance_transactions/{id}`
 
 ```json
 {
@@ -129,11 +189,57 @@ Storage.
   "category": "Penjualan telur",
   "amount": 500000,
   "date": "timestamp",
-  "note": "",
-  "created_by": "uid",
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "notes": "",
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
 }
 ```
 
-Tipe yang valid: `income`, `expense`. Collection ini dapat dibaca user aktif untuk tampilan. Admin dan operator keuangan dapat menambah atau mengubah transaksi, sedangkan hapus transaksi hanya untuk admin.
+Tipe valid: `income`, `expense`. Admin dan operator keuangan dapat membuat/memperbarui transaksi; soft delete hanya dari peran admin.
+
+## `report_metadata/{id}`
+
+```json
+{
+  "id": "uuid",
+  "title": "Laporan operasional Juni 2026",
+  "type": "monthly_summary",
+  "periodStart": "timestamp",
+  "periodEnd": "timestamp",
+  "filters": {
+    "moduleType": "lele"
+  },
+  "status": "ready",
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
+}
+```
+
+Gunakan collection ini hanya untuk metadata laporan yang dihasilkan/dikelola client. Jangan simpan file laporan besar di Firestore.
+
+## `recommendations/{id}`
+
+```json
+{
+  "id": "uuid",
+  "title": "Kurangi pakan sore",
+  "description": "FCR lele meningkat dalam 7 hari terakhir.",
+  "moduleType": "lele",
+  "priority": "medium",
+  "status": "open",
+  "source": "manual",
+  "createdBy": "uid",
+  "updatedBy": "uid",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp",
+  "isDeleted": false
+}
+```
+
+Rekomendasi MVP dibuat manual/admin-side. Tidak ada job backend untuk membuat rekomendasi otomatis.

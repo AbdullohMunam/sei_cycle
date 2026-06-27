@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/constants/app_roles.dart';
-import '../../../core/utils/firestore_dates.dart';
+import '../../../core/utils/firestore_fields.dart';
 
 class AppUser {
   const AppUser({
@@ -63,14 +63,33 @@ class AppUser {
   ) {
     final data = document.data() ?? const <String, dynamic>{};
     return AppUser(
-      uid: data['uid'] as String? ?? document.id,
-      name: data['name'] as String? ?? 'Pengguna SeiCycle',
-      email: data['email'] as String? ?? '',
-      photoUrl: data['photo_url'] as String? ?? '',
-      role: data['role'] as String? ?? AppRoles.legacyPesertaEdukasi,
-      isActive: data['is_active'] as bool? ?? true,
-      createdAt: dateTimeFromFirestore(data['created_at']),
-      updatedAt: dateTimeFromFirestore(data['updated_at']),
+      uid: stringField(data, const ['uid', 'id'], fallback: document.id),
+      name: stringField(data, const ['name'], fallback: 'Pengguna SeiCycle'),
+      email: stringField(data, const ['email']),
+      photoUrl: stringField(data, const ['photoUrl', 'photo_url']),
+      role: stringField(data, const [
+        'role',
+      ], fallback: AppRoles.legacyPesertaEdukasi),
+      isActive: boolField(data, const [
+        'isActive',
+        'is_active',
+      ], fallback: true),
+      createdAt: dateTimeField(data, const ['createdAt', 'created_at']),
+      updatedAt: dateTimeField(data, const ['updatedAt', 'updated_at']),
     );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': uid,
+      'uid': uid,
+      'name': name,
+      'email': email,
+      'photoUrl': photoUrl,
+      'role': role,
+      'isActive': isActive,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+    };
   }
 }

@@ -68,7 +68,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _updateStatus(ScheduleItem item, String status) async {
     await runOperationWithFeedback(
       context,
-      operation: () => _service.updateStatus(item.id, status),
+      operation: () =>
+          _service.updateStatus(item.id, status, userId: widget.profile.uid),
       successMessage: 'Status jadwal diperbarui.',
     );
   }
@@ -82,7 +83,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (!confirmed || !mounted) return;
     await runOperationWithFeedback(
       context,
-      operation: () => _service.delete(item.id),
+      operation: () => _service.delete(item.id, userId: widget.profile.uid),
       successMessage: 'Jadwal dihapus.',
     );
   }

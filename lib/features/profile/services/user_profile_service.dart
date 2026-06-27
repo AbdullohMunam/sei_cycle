@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/constants/app_roles.dart';
 import '../../../core/constants/firestore_collections.dart';
+import '../../../core/utils/firestore_validators.dart';
 import '../models/app_user.dart';
 
 class UserProfileService {
@@ -21,6 +22,7 @@ class UserProfileService {
 
     if (!snapshot.exists) {
       await reference.set({
+        'id': user.uid,
         'uid': user.uid,
         'name': name?.trim().isNotEmpty == true
             ? name!.trim()
@@ -28,11 +30,11 @@ class UserProfileService {
                   ? user.displayName!.trim()
                   : 'Pengguna SeiCycle'),
         'email': user.email ?? '',
-        'photo_url': user.photoURL ?? '',
+        'photoUrl': user.photoURL ?? '',
         'role': AppRoles.defaultRole,
-        'is_active': true,
-        'created_at': now,
-        'updated_at': now,
+        'isActive': true,
+        'createdAt': now,
+        'updatedAt': now,
       });
       return;
     }
@@ -41,11 +43,12 @@ class UserProfileService {
         ? name!.trim()
         : user.displayName?.trim();
     await reference.set({
+      'id': user.uid,
       'uid': user.uid,
       'email': user.email ?? '',
-      'photo_url': user.photoURL ?? '',
+      'photoUrl': user.photoURL ?? '',
       if (resolvedName?.isNotEmpty == true) 'name': resolvedName,
-      'updated_at': now,
+      'updatedAt': now,
     }, SetOptions(merge: true));
   }
 
@@ -59,17 +62,18 @@ class UserProfileService {
   }
 
   Stream<List<AppUser>> watchUsers() {
-    return _users.snapshots().map((snapshot) {
-      final users = snapshot.docs.map(AppUser.fromDocument).toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      return users;
-    });
+    return _users
+        .orderBy('name')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(AppUser.fromDocument).toList());
   }
 
   Future<void> updateName(String uid, String name) {
+    requireTrimmed(uid, 'uid');
+    requireTrimmed(name, 'name');
     return _users.doc(uid).update({
       'name': name.trim(),
-      'updated_at': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -78,6 +82,7 @@ class UserProfileService {
     required String role,
     bool? isActive,
   }) {
+    requireTrimmed(uid, 'uid');
     final assignableRole = AppRoles.assignableRole(role);
     if (!AppRoles.isAssignable(assignableRole)) {
       throw ArgumentError.value(role, 'role', 'Role tidak dapat diberikan.');
@@ -87,8 +92,8 @@ class UserProfileService {
       'role': assignableRole,
       ...(isActive == null
           ? const <String, Object?>{}
-          : {'is_active': isActive}),
-      'updated_at': FieldValue.serverTimestamp(),
+          : {'isActive': isActive}),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 }

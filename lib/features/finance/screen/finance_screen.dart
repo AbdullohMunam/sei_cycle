@@ -61,7 +61,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     if (!confirmed || !mounted) return;
     await runOperationWithFeedback(
       context,
-      operation: () => _service.delete(record.id),
+      operation: () => _service.delete(record.id, userId: widget.profile.uid),
       successMessage: 'Transaksi dihapus.',
     );
   }

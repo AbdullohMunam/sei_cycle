@@ -1,69 +1,97 @@
 # ERD MVP SeiCycle
 
-Firestore bersifat document database, sehingga diagram berikut menunjukkan
-relasi logis melalui UID dan `module_id`, bukan foreign key database.
+Firestore bersifat document database, sehingga diagram berikut menunjukkan relasi logis melalui UID dan `moduleType`, bukan foreign key database.
 
 ```mermaid
 erDiagram
     USERS ||--o{ LOGBOOKS : creates
-    USERS ||--o{ INVENTORY_ITEMS : creates
+    USERS ||--o{ INVENTORY : creates
     USERS ||--o{ SCHEDULES : creates
-    USERS ||--o{ FINANCE_RECORDS : creates
+    USERS ||--o{ FINANCE_TRANSACTIONS : creates
+    USERS ||--o{ NOTIFICATIONS : receives
     FARM_MODULES ||--o{ LOGBOOKS : categorizes
     FARM_MODULES ||--o{ SCHEDULES : categorizes
+    FARM_MODULES ||--o{ RECOMMENDATIONS : targets
 
     USERS {
-        string uid PK
+        string id PK
+        string uid
         string name
         string email
-        string photo_url
+        string photoUrl
         string role
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
+        boolean isActive
+        timestamp createdAt
+        timestamp updatedAt
     }
 
     FARM_MODULES {
-        string module_id PK
-        string module_name
-        string module_type
+        string id PK
+        string name
+        string type
         string description
         string icon
         string color
-        boolean is_active
+        boolean isActive
+        timestamp updatedAt
     }
 
     LOGBOOKS {
         string id PK
-        string module_id
-        string created_by
-        string activity_type
-        timestamp activity_date
+        string moduleType
+        string createdBy
+        string updatedBy
+        string title
+        timestamp activityDate
         number quantity
         string unit
-        string condition
-        boolean is_deleted
+        string status
+        string notes
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
     }
 
-    INVENTORY_ITEMS {
+    INVENTORY {
         string id PK
-        string created_by
+        string createdBy
+        string updatedBy
         string name
         string category
         string unit
-        number current_stock
-        number min_stock
-        boolean is_low_stock
+        number currentStock
+        number minStock
+        boolean isLowStock
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
     }
 
     SCHEDULES {
         string id PK
-        string module_id
-        string created_by
+        string moduleType
+        string createdBy
+        string updatedBy
         string title
-        string schedule_type
-        timestamp scheduled_at
+        string type
+        timestamp date
         string status
+        string notes
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    NOTIFICATIONS {
+        string id PK
+        string userId
+        string title
+        string body
+        string type
+        string status
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
     }
 
     EDUCATION_CONTENTS {
@@ -71,19 +99,57 @@ erDiagram
         string title
         string type
         string content
-        string external_url
-        boolean is_published
+        string externalUrl
+        boolean isPublished
+        string createdBy
+        string updatedBy
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
     }
 
-    FINANCE_RECORDS {
+    FINANCE_TRANSACTIONS {
         string id PK
-        string created_by
+        string createdBy
+        string updatedBy
         string type
         string category
         number amount
         timestamp date
+        string notes
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    REPORT_METADATA {
+        string id PK
+        string title
+        string type
+        timestamp periodStart
+        timestamp periodEnd
+        string status
+        string createdBy
+        string updatedBy
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    RECOMMENDATIONS {
+        string id PK
+        string moduleType
+        string title
+        string description
+        string priority
+        string status
+        string source
+        string createdBy
+        string updatedBy
+        boolean isDeleted
+        timestamp createdAt
+        timestamp updatedAt
     }
 ```
 
-AI recommendation, laporan PDF/Excel, Storage upload, dan backend API berada di
-luar scope MVP.
+AI otomatis, laporan file besar, Storage upload, Cloud Functions, dan backend API berada di luar scope MVP ini.

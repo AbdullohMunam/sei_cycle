@@ -15,28 +15,24 @@ class FarmModuleService {
 
   Stream<List<FarmModule>> watchActiveModules() {
     return _collection
-        .where('is_active', isEqualTo: true)
+        .where('isActive', isEqualTo: true)
+        .orderBy('name')
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(FarmModule.fromDocument).toList()
-                ..sort((a, b) => a.name.compareTo(b.name)),
-        );
+        .map((snapshot) => snapshot.docs.map(FarmModule.fromDocument).toList());
   }
 
   Future<void> seedDefaults() async {
     final batch = _firestore.batch();
     for (final module in FarmModules.values) {
       batch.set(_collection.doc(module.id), {
-        'module_id': module.id,
-        'module_name': module.name,
-        'module_type': module.type,
+        'id': module.id,
+        'name': module.name,
+        'type': module.type,
         'description': module.description,
         'icon': module.icon,
         'color': module.color,
-        'is_active': true,
-        'created_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
+        'isActive': true,
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     }
     await batch.commit();

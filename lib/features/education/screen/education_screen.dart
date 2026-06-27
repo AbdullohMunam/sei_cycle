@@ -45,6 +45,7 @@ class _EducationScreenState extends State<EducationScreen> {
         content: value.content,
         externalUrl: value.externalUrl,
         isPublished: value.isPublished,
+        userId: widget.profile.uid,
       ),
       successMessage: content == null
           ? 'Konten ditambahkan.'
@@ -61,7 +62,7 @@ class _EducationScreenState extends State<EducationScreen> {
     if (!confirmed || !mounted) return;
     await runOperationWithFeedback(
       context,
-      operation: () => _service.delete(content.id),
+      operation: () => _service.delete(content.id, userId: widget.profile.uid),
       successMessage: 'Konten dihapus.',
     );
   }

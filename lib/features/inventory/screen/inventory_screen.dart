@@ -60,7 +60,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (!confirmed || !mounted) return;
     await runOperationWithFeedback(
       context,
-      operation: () => _service.delete(item.id),
+      operation: () => _service.delete(item.id, userId: widget.profile.uid),
       successMessage: 'Inventaris dihapus.',
     );
   }
