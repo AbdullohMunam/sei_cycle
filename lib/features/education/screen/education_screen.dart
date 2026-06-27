@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/farm_modules.dart';
 import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/operation_feedback.dart';
 import '../../../core/widgets/app_ui.dart';
@@ -23,6 +24,7 @@ class _EducationScreenState extends State<EducationScreen> {
   late final EducationService _service;
   String _query = '';
   String? _type;
+  String? _moduleType;
 
   @override
   void initState() {
@@ -44,7 +46,8 @@ class _EducationScreenState extends State<EducationScreen> {
         type: value.type,
         content: value.content,
         externalUrl: value.externalUrl,
-        isPublished: value.isPublished,
+        status: value.status,
+        moduleType: value.moduleType,
         userId: widget.profile.uid,
       ),
       successMessage: content == null
@@ -85,7 +88,7 @@ class _EducationScreenState extends State<EducationScreen> {
           AppCard(
             padding: const EdgeInsets.all(12),
             child: ResponsiveFormRow(
-              breakpoint: 560,
+              breakpoint: 720,
               children: [
                 TextField(
                   onChanged: (value) => setState(() => _query = value),
@@ -97,13 +100,28 @@ class _EducationScreenState extends State<EducationScreen> {
                 DropdownButtonFormField<String?>(
                   initialValue: _type,
                   decoration: const InputDecoration(labelText: 'Jenis konten'),
-                  items: const [
-                    DropdownMenuItem(value: null, child: Text('Semua jenis')),
-                    DropdownMenuItem(value: 'artikel', child: Text('Artikel')),
-                    DropdownMenuItem(value: 'video', child: Text('Video')),
-                    DropdownMenuItem(value: 'sop', child: Text('SOP')),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua jenis')),
+                    for (final type in EducationType.values)
+                      DropdownMenuItem(
+                        value: type,
+                        child: Text(EducationType.label(type)),
+                      ),
                   ],
                   onChanged: (value) => setState(() => _type = value),
+                ),
+                DropdownButtonFormField<String?>(
+                  initialValue: _moduleType,
+                  decoration: const InputDecoration(labelText: 'Modul Kebun'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua Modul')),
+                    for (final module in FarmModules.values)
+                      DropdownMenuItem(
+                        value: module.id,
+                        child: Text(module.name),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _moduleType = value),
                 ),
               ],
             ),
@@ -113,27 +131,28 @@ class _EducationScreenState extends State<EducationScreen> {
             child: StreamBuilder<List<EducationContent>>(
               stream: _service.watchContents(
                 includeDrafts: widget.profile.canManageEducation,
+                type: _type,
+                moduleType: _moduleType,
               ),
               builder: (context, snapshot) {
                 final state = asyncSnapshotState(snapshot);
                 if (state != null) return state;
                 final query = _query.toLowerCase();
                 final contents = snapshot.requireData.where((item) {
-                  final matchesType = _type == null || item.type == _type;
                   final matchesQuery =
                       query.isEmpty ||
                       item.title.toLowerCase().contains(query) ||
-                      item.content.toLowerCase().contains(query);
-                  return matchesType && matchesQuery;
+                      item.previewText.toLowerCase().contains(query);
+                  return matchesQuery;
                 }).toList();
                 if (contents.isEmpty) {
                   return EmptyState(
-                    title: _query.isEmpty
+                    title: _query.isEmpty && _type == null && _moduleType == null
                         ? 'Belum ada materi edukasi'
                         : 'Materi tidak ditemukan',
                     message: _query.isEmpty
                         ? 'Panduan akan muncul setelah admin menerbitkan konten pertama.'
-                        : 'Coba gunakan kata kunci lain atau pilih semua jenis konten.',
+                        : 'Coba gunakan kata kunci lain atau ubah filter pencarian.',
                     icon: Icons.school_outlined,
                   );
                 }
@@ -204,13 +223,17 @@ class _EducationCard extends StatelessWidget {
               children: [
                 AppIconBox(icon: _iconForType(content.type), color: color),
                 const SizedBox(width: 10),
-                StatusBadge(label: _typeLabel(content.type), color: color),
+                StatusBadge(label: EducationType.label(content.type), color: color),
                 const Spacer(),
-                if (!content.isPublished)
-                  const StatusBadge(
-                    label: 'Draft',
-                    color: AppColors.warning,
-                    icon: Icons.edit_note_outlined,
+                if (content.status != EducationStatus.published)
+                  StatusBadge(
+                    label: EducationStatus.label(content.status),
+                    color: content.status == EducationStatus.archived
+                        ? AppColors.textMuted
+                        : AppColors.warning,
+                    icon: content.status == EducationStatus.archived
+                        ? Icons.archive_outlined
+                        : Icons.edit_note_outlined,
                   ),
               ],
             ),
@@ -230,7 +253,7 @@ class _EducationCard extends StatelessWidget {
                   const SizedBox(height: 7),
                   Expanded(
                     child: Text(
-                      content.content,
+                      content.previewText,
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -240,7 +263,7 @@ class _EducationCard extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      if (content.externalUrl.isNotEmpty) ...[
+                      if (content.videoUrl.isNotEmpty) ...[
                         const Icon(
                           Icons.link_rounded,
                           size: 15,
@@ -249,12 +272,31 @@ class _EducationCard extends StatelessWidget {
                         const SizedBox(width: 5),
                         const Expanded(
                           child: Text(
-                            'Tautan pendukung tersedia',
+                            'Tautan tersedia',
                             style: TextStyle(
                               color: AppColors.primaryGreen,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
+                          ),
+                        ),
+                      ] else if (content.moduleType.isNotEmpty) ...[
+                        const Icon(
+                          Icons.eco_outlined,
+                          size: 15,
+                          color: AppColors.accentBrown,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            FarmModules.nameOf(content.moduleType),
+                            style: const TextStyle(
+                              color: AppColors.accentBrown,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ] else
@@ -294,21 +336,15 @@ class _EducationCard extends StatelessWidget {
 }
 
 IconData _iconForType(String type) => switch (type) {
-  'video' => Icons.ondemand_video_outlined,
-  'sop' => Icons.fact_check_outlined,
+  EducationType.video => Icons.ondemand_video_outlined,
+  EducationType.sop => Icons.fact_check_outlined,
   _ => Icons.article_outlined,
 };
 
 Color _colorForType(String type) => switch (type) {
-  'video' => AppColors.info,
-  'sop' => AppColors.accentBrown,
+  EducationType.video => AppColors.info,
+  EducationType.sop => AppColors.accentBrown,
   _ => AppColors.primaryGreen,
-};
-
-String _typeLabel(String type) => switch (type) {
-  'video' => 'Video',
-  'sop' => 'SOP',
-  _ => 'Artikel',
 };
 
 class _EducationFormValue {
@@ -317,14 +353,16 @@ class _EducationFormValue {
     required this.type,
     required this.content,
     required this.externalUrl,
-    required this.isPublished,
+    required this.status,
+    required this.moduleType,
   });
 
   final String title;
   final String type;
   final String content;
   final String externalUrl;
-  final bool isPublished;
+  final String status;
+  final String moduleType;
 }
 
 class _EducationFormDialog extends StatefulWidget {
@@ -342,16 +380,24 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
   late final TextEditingController _content;
   late final TextEditingController _url;
   late String _type;
-  late bool _published;
+  late String _status;
+  String? _moduleType;
 
   @override
   void initState() {
     super.initState();
     _title = TextEditingController(text: widget.content?.title);
-    _content = TextEditingController(text: widget.content?.content);
-    _url = TextEditingController(text: widget.content?.externalUrl);
-    _type = widget.content?.type ?? 'artikel';
-    _published = widget.content?.isPublished ?? true;
+    
+    // Reverse logic for content based on type for the simple form
+    String initialContent = widget.content?.content ?? '';
+    if (widget.content?.type == EducationType.sop && widget.content!.steps.isNotEmpty) {
+      initialContent = widget.content!.steps.join('\n');
+    }
+    _content = TextEditingController(text: initialContent);
+    _url = TextEditingController(text: widget.content?.videoUrl);
+    _type = widget.content?.type ?? EducationType.article;
+    _status = widget.content?.status ?? EducationStatus.draft;
+    _moduleType = (widget.content?.moduleType.isNotEmpty ?? false) ? widget.content!.moduleType : null;
   }
 
   @override
@@ -371,7 +417,8 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
         type: _type,
         content: _content.text,
         externalUrl: _url.text,
-        isPublished: _published,
+        status: _status,
+        moduleType: _moduleType ?? '',
       ),
     );
   }
@@ -394,21 +441,45 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _type,
-                  decoration: const InputDecoration(labelText: 'Tipe'),
-                  items: const [
-                    DropdownMenuItem(value: 'artikel', child: Text('Artikel')),
-                    DropdownMenuItem(value: 'video', child: Text('Video')),
-                    DropdownMenuItem(value: 'sop', child: Text('SOP')),
+                ResponsiveFormRow(
+                  breakpoint: 400,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: _type,
+                      decoration: const InputDecoration(labelText: 'Tipe'),
+                      items: [
+                        for (final type in EducationType.values)
+                          DropdownMenuItem(
+                            value: type,
+                            child: Text(EducationType.label(type)),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _type = value!),
+                    ),
+                    DropdownButtonFormField<String?>(
+                      initialValue: _moduleType,
+                      decoration: const InputDecoration(labelText: 'Modul (Opsional)'),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('Umum')),
+                        for (final module in FarmModules.values)
+                          DropdownMenuItem(
+                            value: module.id,
+                            child: Text(module.name),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _moduleType = value),
+                    ),
                   ],
-                  onChanged: (value) => setState(() => _type = value!),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _content,
                   maxLines: 7,
-                  decoration: const InputDecoration(labelText: 'Isi konten'),
+                  decoration: InputDecoration(
+                    labelText: _type == EducationType.sop 
+                      ? 'Langkah SOP (pisahkan dengan enter)' 
+                      : 'Isi konten/deskripsi',
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
@@ -416,14 +487,21 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
                   controller: _url,
                   keyboardType: TextInputType.url,
                   decoration: const InputDecoration(
-                    labelText: 'External URL (opsional)',
+                    labelText: 'External URL (Opsional untuk video)',
                   ),
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Publikasikan'),
-                  value: _published,
-                  onChanged: (value) => setState(() => _published = value),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _status,
+                  decoration: const InputDecoration(labelText: 'Status Publikasi'),
+                  items: [
+                    for (final status in EducationStatus.values)
+                      DropdownMenuItem(
+                        value: status,
+                        child: Text(EducationStatus.label(status)),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _status = value!),
                 ),
               ],
             ),

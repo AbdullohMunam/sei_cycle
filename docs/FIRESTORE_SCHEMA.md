@@ -170,20 +170,37 @@ Tipe awal: `low_stock`, `schedule_overdue`, `production_reminder`, `system`. Col
 ```json
 {
   "id": "uuid",
-  "title": "Budidaya Maggot BSF",
-  "type": "artikel",
-  "content": "Isi materi atau SOP...",
-  "externalUrl": "https://example.com/video",
-  "isPublished": true,
+  "title": "Judul Edukasi",
+  "type": "artikel", // artikel, video, sop
+  "status": "published", // draft, published, archived
+  "moduleType": "lele", // optional
+  "category": "Panduan", // optional
+  "tags": ["pemula", "pakan"], // optional
+  "authorId": "uid",
   "createdBy": "uid",
   "updatedBy": "uid",
   "createdAt": "timestamp",
   "updatedAt": "timestamp",
-  "isDeleted": false
+  "isDeleted": false,
+  
+  // Field khusus artikel
+  "summary": "Ringkasan pendek...",
+  "content": "Isi lengkap...",
+  "thumbnailUrl": "url-gambar-eksternal",
+  
+  // Field khusus video
+  "externalVideoUrl": "https://youtube.com/...",
+  "duration": "12:34",
+  
+  // Field khusus SOP
+  "steps": ["Langkah 1", "Langkah 2"],
+  "toolsNeeded": ["Alat 1", "Alat 2"],
+  "safetyNotes": "Catatan K3"
 }
 ```
 
-Tipe valid: `artikel`, `video`, `sop`. File media tidak diunggah ke Firebase Storage; gunakan URL eksternal bila perlu.
+Tipe valid: `artikel`, `video`, `sop`. Status valid: `draft`, `published`, `archived`.
+File media tidak diunggah ke Firebase Storage; gunakan URL eksternal. Field `isPublished` dan `externalUrl` (legacy) digantikan oleh `status` dan `externalVideoUrl`.
 
 ## `finance_transactions/{id}`
 

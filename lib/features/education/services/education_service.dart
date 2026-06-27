@@ -5,6 +5,11 @@ import '../../../core/constants/firestore_collections.dart';
 import '../../../core/utils/firestore_validators.dart';
 import '../models/education_content.dart';
 
+/// Service CRUD untuk `education_contents`.
+///
+/// - Admin: baca semua status, bisa create/update/delete.
+/// - Semua role aktif: baca hanya status `published`.
+/// - Tidak ada Firebase Storage, tidak ada Cloud Functions.
 class EducationService {
   EducationService({FirebaseFirestore? firestore, Uuid? uuid})
     : _firestore = firestore ?? FirebaseFirestore.instance,
@@ -13,18 +18,45 @@ class EducationService {
   final FirebaseFirestore _firestore;
   final Uuid _uuid;
 
-  static const _validTypes = {'artikel', 'video', 'sop'};
-
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection(FirestoreCollections.educationContents);
 
-  Stream<List<EducationContent>> watchContents({required bool includeDrafts}) {
+  // ---------------------------------------------------------------------------
+  // Read
+  // ---------------------------------------------------------------------------
+
+  /// Stream daftar konten edukasi.
+  ///
+  /// [includeDrafts] — admin mendapat semua status; user biasa hanya `published`.
+  /// [type] — filter by `artikel`, `video`, atau `sop`; null = semua.
+  /// [moduleType] — filter by modul kebun; null = semua.
+  /// [status] — filter by status spesifik (override [includeDrafts]).
+  Stream<List<EducationContent>> watchContents({
+    required bool includeDrafts,
+    String? type,
+    String? moduleType,
+    String? status,
+  }) {
     Query<Map<String, dynamic>> query = _collection.where(
       'isDeleted',
       isEqualTo: false,
     );
-    if (!includeDrafts) {
-      query = query.where('isPublished', isEqualTo: true);
+
+    // Status filter
+    if (status != null && status.isNotEmpty) {
+      query = query.where('status', isEqualTo: status);
+    } else if (!includeDrafts) {
+      query = query.where('status', isEqualTo: EducationStatus.published);
+    }
+
+    // Type filter
+    if (type != null && type.trim().isNotEmpty) {
+      query = query.where('type', isEqualTo: type.trim());
+    }
+
+    // ModuleType filter
+    if (moduleType != null && moduleType.trim().isNotEmpty) {
+      query = query.where('moduleType', isEqualTo: moduleType.trim());
     }
 
     return query
@@ -36,36 +68,251 @@ class EducationService {
         );
   }
 
-  Future<void> save({
+  /// Ambil satu konten berdasarkan ID (Future, bukan stream).
+  Future<EducationContent?> getById(String id) async {
+    requireTrimmed(id, 'id');
+    final doc = await _collection.doc(id).get();
+    if (!doc.exists) return null;
+    return EducationContent.fromDocument(doc);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Write — Article
+  // ---------------------------------------------------------------------------
+
+  /// Simpan artikel. Buat baru jika [id] null, update jika ada.
+  Future<String> saveArticle({
     String? id,
     required String title,
-    required String type,
+    required String summary,
     required String content,
-    required String externalUrl,
-    required bool isPublished,
+    required String category,
+    required String moduleType,
+    required List<String> tags,
+    required String status,
     required String userId,
+    String thumbnailUrl = '',
   }) async {
-    _validateSave(title: title, type: type, content: content, userId: userId);
+    _validateTitle(title, userId);
+    requireOneOf(status, EducationStatus.values, 'status');
 
-    final documentId = id ?? _uuid.v4();
+    final docId = id ?? _uuid.v4();
     final now = FieldValue.serverTimestamp();
     final data = <String, dynamic>{
-      'id': documentId,
+      'id': docId,
       'title': title.trim(),
-      'type': type,
+      'type': EducationType.article,
+      'status': status,
+      'moduleType': moduleType.trim(),
+      'category': category.trim(),
+      'tags': tags.map((t) => t.trim()).where((t) => t.isNotEmpty).toList(),
+      'summary': summary.trim(),
       'content': content.trim(),
-      'externalUrl': externalUrl.trim(),
-      'isPublished': isPublished,
+      'thumbnailUrl': thumbnailUrl.trim(),
       'updatedBy': userId,
       'updatedAt': now,
       'isDeleted': false,
     };
     if (id == null) {
+      data['authorId'] = userId;
       data['createdBy'] = userId;
       data['createdAt'] = now;
     }
-    await _collection.doc(documentId).set(data, SetOptions(merge: true));
+    await _collection.doc(docId).set(data, SetOptions(merge: true));
+    return docId;
   }
+
+  // ---------------------------------------------------------------------------
+  // Write — Video
+  // ---------------------------------------------------------------------------
+
+  /// Simpan video tutorial. Tidak ada upload; hanya menyimpan URL eksternal.
+  Future<String> saveVideo({
+    String? id,
+    required String title,
+    required String description,
+    required String externalVideoUrl,
+    required String category,
+    required String moduleType,
+    required String status,
+    required String userId,
+    String duration = '',
+    String thumbnailUrl = '',
+  }) async {
+    _validateTitle(title, userId);
+    requireTrimmed(externalVideoUrl, 'externalVideoUrl');
+    requireOneOf(status, EducationStatus.values, 'status');
+
+    final docId = id ?? _uuid.v4();
+    final now = FieldValue.serverTimestamp();
+    final data = <String, dynamic>{
+      'id': docId,
+      'title': title.trim(),
+      'type': EducationType.video,
+      'status': status,
+      'moduleType': moduleType.trim(),
+      'category': category.trim(),
+      'tags': <String>[],
+      'summary': description.trim(),
+      'content': description.trim(),
+      'externalVideoUrl': externalVideoUrl.trim(),
+      'thumbnailUrl': thumbnailUrl.trim(),
+      'duration': duration.trim(),
+      'updatedBy': userId,
+      'updatedAt': now,
+      'isDeleted': false,
+    };
+    if (id == null) {
+      data['authorId'] = userId;
+      data['createdBy'] = userId;
+      data['createdAt'] = now;
+    }
+    await _collection.doc(docId).set(data, SetOptions(merge: true));
+    return docId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Write — SOP
+  // ---------------------------------------------------------------------------
+
+  /// Simpan SOP operasional. Langkah disimpan sebagai `List<String>` di Firestore.
+  Future<String> saveSop({
+    String? id,
+    required String title,
+    required String moduleType,
+    required List<String> steps,
+    required String status,
+    required String userId,
+    String category = '',
+    List<String> toolsNeeded = const [],
+    String safetyNotes = '',
+  }) async {
+    _validateTitle(title, userId);
+    if (steps.isEmpty) {
+      throw ArgumentError('SOP harus memiliki minimal satu langkah.');
+    }
+    requireOneOf(status, EducationStatus.values, 'status');
+
+    final docId = id ?? _uuid.v4();
+    final now = FieldValue.serverTimestamp();
+    final cleanSteps = steps
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final data = <String, dynamic>{
+      'id': docId,
+      'title': title.trim(),
+      'type': EducationType.sop,
+      'status': status,
+      'moduleType': moduleType.trim(),
+      'category': category.trim(),
+      'tags': <String>[],
+      'steps': cleanSteps,
+      'toolsNeeded':
+          toolsNeeded
+              .map((t) => t.trim())
+              .where((t) => t.isNotEmpty)
+              .toList(),
+      'safetyNotes': safetyNotes.trim(),
+      'summary': cleanSteps.take(2).join(' • '),
+      'content': cleanSteps.join('\n'),
+      'updatedBy': userId,
+      'updatedAt': now,
+      'isDeleted': false,
+    };
+    if (id == null) {
+      data['authorId'] = userId;
+      data['createdBy'] = userId;
+      data['createdAt'] = now;
+    }
+    await _collection.doc(docId).set(data, SetOptions(merge: true));
+    return docId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Generic save (untuk legacy / screen sederhana)
+  // ---------------------------------------------------------------------------
+
+  /// Simpan konten generik. Routing ke saveArticle/saveVideo/saveSop berdasarkan [type].
+  Future<String> save({
+    String? id,
+    required String title,
+    required String type,
+    required String content,
+    required String status,
+    required String userId,
+    String moduleType = '',
+    String category = '',
+    String externalUrl = '',
+    List<String> tags = const [],
+    List<String> steps = const [],
+    List<String> toolsNeeded = const [],
+    String safetyNotes = '',
+    String duration = '',
+    String thumbnailUrl = '',
+  }) {
+    return switch (type) {
+      EducationType.video => saveVideo(
+        id: id,
+        title: title,
+        description: content,
+        externalVideoUrl: externalUrl,
+        category: category,
+        moduleType: moduleType,
+        status: status,
+        userId: userId,
+        duration: duration,
+        thumbnailUrl: thumbnailUrl,
+      ),
+      EducationType.sop => saveSop(
+        id: id,
+        title: title,
+        moduleType: moduleType,
+        steps: steps.isNotEmpty ? steps : content.split('\n'),
+        status: status,
+        userId: userId,
+        category: category,
+        toolsNeeded: toolsNeeded,
+        safetyNotes: safetyNotes,
+      ),
+      _ => saveArticle(
+        id: id,
+        title: title,
+        summary: content.length > 200 ? '${content.substring(0, 200)}...' : content,
+        content: content,
+        category: category,
+        moduleType: moduleType,
+        tags: tags,
+        status: status,
+        userId: userId,
+        thumbnailUrl: thumbnailUrl,
+      ),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Status management
+  // ---------------------------------------------------------------------------
+
+  /// Ubah status konten (draft → published → archived).
+  Future<void> updateStatus(
+    String id, {
+    required String status,
+    required String userId,
+  }) {
+    requireTrimmed(id, 'id');
+    requireTrimmed(userId, 'userId');
+    requireOneOf(status, EducationStatus.values, 'status');
+    return _collection.doc(id).update({
+      'status': status,
+      'updatedBy': userId,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Delete (soft)
+  // ---------------------------------------------------------------------------
 
   Future<void> delete(String id, {required String userId}) {
     requireTrimmed(id, 'id');
@@ -77,15 +324,12 @@ class EducationService {
     });
   }
 
-  void _validateSave({
-    required String title,
-    required String type,
-    required String content,
-    required String userId,
-  }) {
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  void _validateTitle(String title, String userId) {
     requireTrimmed(title, 'title');
-    requireOneOf(type, _validTypes, 'type');
-    requireTrimmed(content, 'content');
     requireTrimmed(userId, 'userId');
   }
 }
