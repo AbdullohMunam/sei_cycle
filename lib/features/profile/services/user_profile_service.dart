@@ -17,34 +17,34 @@ class UserProfileService {
       _firestore.collection(FirestoreCollections.users);
 
   Future<void> ensureUserDocument(User user, {String? name}) async {
-    final reference = _users.doc(user.uid);
-    final snapshot = await reference.get();
-    final now = FieldValue.serverTimestamp();
-
-    if (!snapshot.exists) {
-      await reference.set({
-        'id': user.uid,
-        'uid': user.uid,
-        'name': name?.trim().isNotEmpty == true
-            ? name!.trim()
-            : (user.displayName?.trim().isNotEmpty == true
-                  ? user.displayName!.trim()
-                  : 'Pengguna SeiCycle'),
-        'email': user.email ?? '',
-        'photoUrl': user.photoURL ?? '',
-        'role': AppRoles.defaultRole,
-        'isActive': true,
-        'createdAt': now,
-        'updatedAt': now,
-      });
-      return;
-    }
-
-    final resolvedName = name?.trim().isNotEmpty == true
-        ? name!.trim()
-        : user.displayName?.trim();
-
     try {
+      final reference = _users.doc(user.uid);
+      final snapshot = await reference.get();
+      final now = FieldValue.serverTimestamp();
+
+      if (!snapshot.exists) {
+        await reference.set({
+          'id': user.uid,
+          'uid': user.uid,
+          'name': name?.trim().isNotEmpty == true
+              ? name!.trim()
+              : (user.displayName?.trim().isNotEmpty == true
+                    ? user.displayName!.trim()
+                    : 'Pengguna SeiCycle'),
+          'email': user.email ?? '',
+          'photoUrl': user.photoURL ?? '',
+          'role': AppRoles.defaultRole,
+          'isActive': true,
+          'createdAt': now,
+          'updatedAt': now,
+        });
+        return;
+      }
+
+      final resolvedName = name?.trim().isNotEmpty == true
+          ? name!.trim()
+          : user.displayName?.trim();
+
       await reference.set({
         'id': user.uid,
         'uid': user.uid,
@@ -54,7 +54,6 @@ class UserProfileService {
         'updatedAt': now,
       }, SetOptions(merge: true));
     } catch (e) {
-      // Abaikan error permission-denied saat update profil agar user tetap bisa login
       debugPrint('Gagal menyinkronkan data profil (permission-denied): $e');
     }
   }
