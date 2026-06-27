@@ -7,6 +7,7 @@ import '../features/finance/screen/finance_screen.dart';
 import '../features/inventory/screen/inventory_screen.dart';
 import '../features/logbook/screen/logbook_screen.dart';
 import '../features/notification/screen/notification_screen.dart';
+import '../features/notification/services/notification_service.dart';
 import '../features/profile/models/app_user.dart';
 import '../features/profile/screen/profile_screen.dart';
 import '../features/schedule/screen/schedule_screen.dart';
@@ -23,6 +24,16 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
+  late final Stream<int> _unreadCountStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _unreadCountStream = NotificationService().watchUnreadCount(
+      userId: widget.profile.uid,
+      role: widget.profile.effectiveRole,
+    );
+  }
 
   List<_Destination> get _destinations => <_Destination>[
     _Destination(
@@ -70,6 +81,7 @@ class _AppShellState extends State<AppShell> {
       icon: Icons.notifications_none_outlined,
       selectedIcon: Icons.notifications_rounded,
       builder: () => NotificationScreen(profile: widget.profile),
+      isBadged: true,
     ),
     _Destination(
       label: 'Profil',
@@ -89,24 +101,33 @@ class _AppShellState extends State<AppShell> {
     final destinations = _destinations;
     if (_selectedIndex >= destinations.length) _selectedIndex = 0;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final content = destinations[_selectedIndex].builder();
-        if (constraints.maxWidth >= 900) {
-          return _DesktopShell(
-            profile: widget.profile,
-            destinations: destinations,
-            selectedIndex: _selectedIndex,
-            onSelected: _select,
-            body: content,
-          );
-        }
-        return _MobileShell(
-          profile: widget.profile,
-          destinations: destinations,
-          selectedIndex: _selectedIndex,
-          onSelected: _select,
-          body: content,
+    return StreamBuilder<int>(
+      stream: _unreadCountStream,
+      initialData: 0,
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final content = destinations[_selectedIndex].builder();
+            if (constraints.maxWidth >= 900) {
+              return _DesktopShell(
+                profile: widget.profile,
+                destinations: destinations,
+                selectedIndex: _selectedIndex,
+                onSelected: _select,
+                body: content,
+                unreadCount: unreadCount,
+              );
+            }
+            return _MobileShell(
+              profile: widget.profile,
+              destinations: destinations,
+              selectedIndex: _selectedIndex,
+              onSelected: _select,
+              body: content,
+              unreadCount: unreadCount,
+            );
+          },
         );
       },
     );
@@ -119,12 +140,14 @@ class _Destination {
     required this.icon,
     required this.selectedIcon,
     required this.builder,
+    this.isBadged = false,
   });
 
   final String label;
   final IconData icon;
   final IconData selectedIcon;
   final Widget Function() builder;
+  final bool isBadged;
 }
 
 class _MobileShell extends StatelessWidget {
@@ -134,6 +157,7 @@ class _MobileShell extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     required this.body,
+    required this.unreadCount,
   });
 
   final AppUser profile;
@@ -141,6 +165,7 @@ class _MobileShell extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final Widget body;
+  final int unreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +214,7 @@ class _MobileShell extends StatelessWidget {
         destinations: destinations,
         selectedIndex: selectedIndex,
         onSelected: onSelected,
+        unreadCount: unreadCount,
       ),
     );
   }
@@ -199,11 +225,13 @@ class _MobileNavigation extends StatelessWidget {
     required this.destinations,
     required this.selectedIndex,
     required this.onSelected,
+    required this.unreadCount,
   });
 
   final List<_Destination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final int unreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -225,8 +253,18 @@ class _MobileNavigation extends StatelessWidget {
       destinations: [
         for (var index = 0; index < visibleCount; index++)
           NavigationDestination(
-            icon: Icon(destinations[index].icon),
-            selectedIcon: Icon(destinations[index].selectedIcon),
+            icon: destinations[index].isBadged && unreadCount > 0
+                ? Badge.count(
+                    count: unreadCount,
+                    child: Icon(destinations[index].icon),
+                  )
+                : Icon(destinations[index].icon),
+            selectedIcon: destinations[index].isBadged && unreadCount > 0
+                ? Badge.count(
+                    count: unreadCount,
+                    child: Icon(destinations[index].selectedIcon),
+                  )
+                : Icon(destinations[index].selectedIcon),
             label: destinations[index].label,
           ),
         if (hasOverflow)
@@ -296,6 +334,7 @@ class _DesktopShell extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     required this.body,
+    required this.unreadCount,
   });
 
   final AppUser profile;
@@ -303,6 +342,7 @@ class _DesktopShell extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final Widget body;
+  final int unreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -371,6 +411,8 @@ class _DesktopShell extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final destination = destinations[index];
                           final selected = index == selectedIndex;
+                          final showBadge =
+                              destination.isBadged && unreadCount > 0;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: ListTile(
@@ -380,12 +422,22 @@ class _DesktopShell extends StatelessWidget {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(11),
                               ),
-                              leading: Icon(
-                                selected
-                                    ? destination.selectedIcon
-                                    : destination.icon,
-                                size: 21,
-                              ),
+                              leading: showBadge
+                                  ? Badge.count(
+                                      count: unreadCount,
+                                      child: Icon(
+                                        selected
+                                            ? destination.selectedIcon
+                                            : destination.icon,
+                                        size: 21,
+                                      ),
+                                    )
+                                  : Icon(
+                                      selected
+                                          ? destination.selectedIcon
+                                          : destination.icon,
+                                      size: 21,
+                                    ),
                               title: Text(
                                 destination.label,
                                 style: TextStyle(

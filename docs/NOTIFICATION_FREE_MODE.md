@@ -1,83 +1,231 @@
-# Notification Free Mode SeiCycle
+# Notification Free Mode — SeiCycle
 
-Sistem notifikasi SeiCycle dibuat untuk berjalan di Firebase free mode tanpa Cloud Functions, tanpa Firebase Storage, dan tanpa backend Express.
+Sistem notifikasi SeiCycle berjalan sepenuhnya di Firebase **Spark (free) plan** tanpa Cloud Functions,
+tanpa Firebase Storage, dan tanpa backend Express.
+
+---
+
+## Arsitektur Sistem
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Flutter Client                         │
+│                                                             │
+│  ┌────────────┐   ┌─────────────────┐   ┌───────────────┐  │
+│  │ Inventory/ │   │    Schedule     │   │   Dashboard   │  │
+│  │  Screen    │   │    Screen       │   │    Screen     │  │
+│  └─────┬──────┘   └────────┬────────┘   └──────┬────────┘  │
+│        │                   │                    │           │
+│        └───────────────────┼────────────────────┘           │
+│                            │                                │
+│              ┌─────────────▼──────────────┐                 │
+│              │      NotificationService   │                 │
+│              │  createLowStockAlert()     │                 │
+│              │  createScheduleOverdue()   │                 │
+│              │  createProductionReminder()│                 │
+│              │  createSystemAlert()       │                 │
+│              │  watchUnreadCount()        │                 │
+│              │  watchNotifications()      │                 │
+│              │  markAsRead()              │                 │
+│              │  markAllAsRead()           │                 │
+│              └─────────────┬──────────────┘                 │
+│                            │                                │
+│           ┌────────────────┼────────────────┐               │
+│           │                │                │               │
+│  ┌────────▼──────┐  ┌──────▼───────┐  ┌────▼──────────┐   │
+│  │  Firestore    │  │ LocalReminder│  │   Messaging   │   │
+│  │  notifications│  │  Service     │  │   Service     │   │
+│  │  collection   │  │  (device)    │  │  (FCM token)  │   │
+│  └───────────────┘  └──────────────┘  └───────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Komponen
 
-1. In-app notification
-   - Data disimpan di collection `notifications`.
-   - User membaca inbox dari aplikasi Flutter.
-   - Notifikasi dibuat oleh client saat user membuka fitur yang relevan, misalnya dashboard, inventory, atau schedule.
+### 1. In-App Notification (Firestore)
 
-2. Local reminder
-   - Menggunakan `flutter_local_notifications` dan `timezone`.
-   - Reminder jadwal dibuat lokal di device setelah user membuat atau mengubah schedule.
-   - Reminder dibatalkan saat schedule selesai, dilewati, atau dihapus.
-   - Android memakai mode inexact agar tidak membutuhkan permission exact alarm.
+Data disimpan di collection `notifications`. Notifikasi dibuat oleh **client-side** saat user membuka
+fitur yang relevan (dashboard, inventory, schedule).
 
-3. FCM token
-   - Aplikasi meminta permission Firebase Messaging dan menyimpan `fcmToken` di dokumen `users/{uid}` jika tersedia.
-   - Tidak ada push otomatis dari server karena tidak ada Cloud Functions atau backend berbayar.
-   - Push otomatis FCM menjadi tahap lanjutan jika project upgrade ke Blaze dan menambahkan worker/server tepercaya.
+**Kapan dibuat:**
 
-## Schema `notifications/{id}`
+| Trigger | Di mana | Helper |
+|---|---|---|
+| Stok item < minimum | `InventoryScreen` & `DashboardScreen` | `createLowStockAlert()` |
+| Schedule pending & lewat waktu | `ScheduleScreen` | `createScheduleOverdueAlert()` |
+| Schedule baru dibuat/diedit | `ScheduleScreen` | `createProductionReminder()` |
+| Alert manual admin | Anywhere | `createSystemAlert()` |
+
+### 2. Local Reminder (Device Notification)
+
+Menggunakan `flutter_local_notifications` + `timezone`.
+
+- Dibuat saat user **membuat atau mengedit schedule** dengan status `pending`.
+- **Dibatalkan** otomatis saat status schedule diubah jadi `done` / `skipped` / dihapus.
+- Hanya aktif di device yang membuat jadwal dan sudah memberikan izin notifikasi.
+- Android menggunakan `AndroidScheduleMode.inexactAllowWhileIdle` agar tidak membutuhkan
+  `USE_EXACT_ALARM` permission (bebas Doze mode).
+
+### 3. FCM Token (Persiapan Push)
+
+- App meminta permission `firebase_messaging` saat user mengetuk **"Aktifkan notifikasi"** di layar Profil.
+- Token disimpan di `users/{uid}.fcmToken` dan `fcmTokenUpdatedAt`.
+- **Tidak ada push otomatis** — tidak ada server yang mengirim pesan FCM karena tidak ada
+  Cloud Functions atau backend berbayar.
+- Token disimpan sebagai **persiapan upgrade Blaze** (lihat bagian Batasan Free Mode).
+
+---
+
+## Schema Dokumen `notifications/{id}`
 
 ```json
 {
-  "id": "uuid-or-deterministic-id",
-  "title": "Stok Pakan rendah",
-  "body": "Stok tersisa 5 kg, batas minimum 10 kg.",
+  "id": "low_stock_uid123_itemABC",
+  "title": "Stok Pakan Lele rendah",
+  "body": "Stok Pakan Lele tersisa 3 kg, batas minimum 10 kg.",
   "type": "low_stock",
   "targetRole": "operator_lapangan",
-  "userId": "uid-optional",
+  "userId": "uid123",
   "relatedCollection": "inventory",
-  "relatedId": "inventory-id",
+  "relatedId": "itemABC",
   "isRead": false,
-  "createdAt": "timestamp",
-  "scheduledAt": "timestamp-optional",
+  "createdAt": "Firestore Timestamp",
+  "scheduledAt": "Firestore Timestamp (opsional)",
   "isDeleted": false
 }
 ```
 
-Tipe yang dipakai saat ini:
+### Tipe Notifikasi
 
-- `low_stock`: alert stok rendah saat inventory/dashboard mendeteksi item low stock.
-- `schedule_overdue`: alert jadwal pending yang sudah lewat.
-- `production_reminder`: pengingat produksi/kegiatan dari schedule.
-- `system`: alert sistem sederhana untuk admin/client.
+| `type` | Deskripsi |
+|---|---|
+| `low_stock` | Stok item di bawah batas minimum |
+| `schedule_overdue` | Jadwal pending sudah melewati waktu terjadwal |
+| `production_reminder` | Pengingat kegiatan produksi dari jadwal baru/diedit |
+| `system` | Alert sistem dari admin untuk role tertentu atau semua |
 
-## Guard Anti Spam Write
+---
 
-Low stock notification memakai ID deterministik:
+## Guard Anti-Spam Write
 
-```text
+Semua tipe notifikasi menggunakan **ID deterministik** + **read-before-write guard** untuk mencegah
+duplikat dokumen setiap kali layar di-refresh.
+
+### Pola ID Deterministik
+
+```
 low_stock_{userId}_{inventoryId}
+schedule_overdue_{userId}_{scheduleId}
+production_reminder_{userId}_{scheduleId}
 ```
 
-Sebelum membuat alert, client membaca dokumen tersebut. Jika dokumen masih ada dan belum dibaca, client tidak menulis ulang. Jika user sudah menandai dibaca dan stok masih rendah pada pembukaan berikutnya, client boleh membuat ulang alert dengan ID yang sama.
+### Logika Guard
 
-Overdue dan production reminder juga memakai ID deterministik per user + schedule agar tidak membuat dokumen duplikat untuk jadwal yang sama.
+Sebelum menulis notifikasi, client membaca dokumen dengan ID deterministik tersebut:
+
+```dart
+final existing = await reference.get();
+// Skip jika sudah ada dan belum dibaca
+if (existing.exists && existing.data()?['isRead'] != true) return;
+```
+
+Jika dokumen **sudah ada dan belum dibaca** → tidak menulis ulang (tidak spam Firestore).
+
+Jika dokumen **belum ada** atau **sudah ditandai dibaca** → buat/timpa dokumen baru.
+
+### Guard Tambahan di UI
+
+- `InventoryScreen._syncedLowStockAlertIds` — Set berisi item ID yang sudah di-sync dalam sesi ini.
+  Mencegah `createLowStockAlert` dipanggil berulang dari `StreamBuilder` yang rebuild.
+- `ScheduleScreen._syncedOverdueAlertIds` — Sama, untuk jadwal overdue.
+
+---
+
+## Unread Badge di Navigasi
+
+`AppShell` memanggil `NotificationService.watchUnreadCount()` saat `initState` dan mempass
+hasilnya ke `_MobileShell` (NavigationBar `Badge.count`) dan `_DesktopShell` (sidebar `Badge.count`).
+
+Badge otomatis hilang saat semua notifikasi ditandai dibaca.
+
+---
 
 ## Query dan Akses
 
-Notification inbox mengambil dokumen yang cocok dengan salah satu kondisi:
+Notification inbox mengambil notifikasi yang cocok dengan salah satu kondisi:
 
-- `userId == currentUser.uid`
-- `targetRole == currentUser.role`
-- `targetRole == "all"`
+```
+isDeleted == false AND (
+  userId == currentUser.uid
+  OR targetRole == currentUser.role
+  OR targetRole == 'all'
+)
+```
 
-User dapat:
+Diurutkan berdasarkan `createdAt` descending (terbaru di atas).
 
-- membaca notifikasi personal/role/global yang relevan,
-- membuat notifikasi client-side yang relevan untuk dirinya/role-nya,
-- menandai satu notifikasi sebagai dibaca,
-- menandai batch notifikasi sebagai dibaca.
+**Aksi yang diizinkan user:**
 
-Admin tetap dapat menghapus notifikasi bila perlu lewat console/admin flow.
+| Aksi | Siapa |
+|---|---|
+| Baca notifikasi personal/role/global | Semua user aktif |
+| Buat notifikasi (client-side guard) | User aktif sesuai kondisi `canReadNotification` |
+| Mark single notifikasi sebagai read | User yang bisa membaca notifikasi tersebut |
+| Mark all as read (batch max 50) | User yang bisa membaca notifikasi tersebut |
+| Hapus notifikasi | Hanya admin |
+
+---
+
+## File Utama
+
+| File | Peran |
+|---|---|
+| `lib/features/notification/models/app_notification.dart` | Model Firestore ↔ Dart |
+| `lib/features/notification/services/notification_service.dart` | CRUD + helper alerts + badge stream |
+| `lib/features/notification/screen/notification_screen.dart` | UI inbox, filter, mark read |
+| `lib/core/services/local_reminder_service.dart` | Local notification (device) via flutter_local_notifications |
+| `lib/core/services/messaging_service.dart` | FCM permission + token save |
+| `lib/app/app_shell.dart` | Unread badge di nav (mobile & desktop) |
+
+---
 
 ## Batasan Free Mode
 
-- Reminder lokal hanya aktif di device yang membuat jadwal/menyalakan permission.
-- Jika user uninstall app, clear data, atau pindah device, local reminder harus dibuat ulang dari aplikasi.
-- FCM token hanya disimpan sebagai persiapan. Tidak ada pengiriman push otomatis tanpa server tepercaya.
-- Hindari membuat alert dari loop real-time yang menulis setiap snapshot; gunakan helper guard seperti `NotificationService.createLowStockAlert`.
+| Batasan | Penjelasan |
+|---|---|
+| Local reminder | Hanya aktif di device yang membuat jadwal. Pindah device atau reinstall → reminder hilang |
+| FCM push otomatis | Tidak tersedia tanpa server tepercaya (Cloud Functions / backend berbayar) |
+| Firestore writes | Dikontrol guard client-side; tidak ada trigger server-side |
+| Unread count | Selalu dihitung ulang via Firestore query — tidak ada counter cache |
+
+---
+
+## Upgrade Path ke Blaze (Opsional)
+
+Jika project upgrade ke **Firebase Blaze plan**, FCM push otomatis bisa diaktifkan dengan:
+
+1. Membuat **Cloud Function** yang dipicu oleh Firestore `onCreate` di collection `notifications`.
+2. Fungsi membaca `targetRole` dan mengambil semua `fcmToken` dari collection `users`
+   yang memiliki role tersebut.
+3. Mengirim pesan via **Firebase Admin SDK** ke token yang ditemukan.
+
+Token sudah disimpan di `users/{uid}.fcmToken` — tidak perlu perubahan client.
+
+```
+// Contoh struktur Cloud Function (Node.js) — BELUM DIIMPLEMENTASI
+exports.onNotificationCreated = onDocumentCreated(
+  'notifications/{id}',
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+    const tokens = await getTokensForRole(data.targetRole, data.userId);
+    await admin.messaging().sendEachForMulticast({ tokens, notification: { ... } });
+  },
+);
+```
+
+---
+
+*Dokumentasi ini diperbarui pada: 2026-06-27. Lihat juga: `FIRESTORE_SCHEMA.md`, `BACKEND.md`.*

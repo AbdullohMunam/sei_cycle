@@ -77,6 +77,11 @@ class LocalReminderService {
     await initialize();
     await _plugin.cancel(id: _stableId(scheduleId));
   }
+
+  Future<void> cancelAll() async {
+    await initialize();
+    await _plugin.cancelAll();
+  }
 }
 
 int _stableId(String value) => value.hashCode & 0x7fffffff;

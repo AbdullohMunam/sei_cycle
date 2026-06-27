@@ -17,6 +17,28 @@ class NotificationService {
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection(FirestoreCollections.notifications);
 
+  /// Streams the count of unread notifications for the given user/role.
+  /// Useful for showing a badge count in navigation.
+  Stream<int> watchUnreadCount({
+    required String userId,
+    required String role,
+  }) {
+    requireTrimmed(userId, 'userId');
+    requireTrimmed(role, 'role');
+
+    return _collection
+        .where('isDeleted', isEqualTo: false)
+        .where('isRead', isEqualTo: false)
+        .where(
+          Filter.or(
+            Filter('userId', isEqualTo: userId),
+            Filter('targetRole', whereIn: [role, 'all']),
+          ),
+        )
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   Stream<List<AppNotification>> watchNotifications({
     required String userId,
     required String role,
@@ -172,17 +194,30 @@ class NotificationService {
     required String title,
     required String userId,
     required String role,
-  }) {
-    return create(
-      id: 'schedule_overdue_${userId}_$scheduleId',
-      title: 'Jadwal overdue',
-      body: 'Jadwal $title sudah melewati waktu dan masih pending.',
-      type: 'schedule_overdue',
-      targetRole: role,
-      userId: userId,
-      relatedCollection: FirestoreCollections.schedules,
-      relatedId: scheduleId,
-    );
+  }) async {
+    requireTrimmed(scheduleId, 'scheduleId');
+    requireTrimmed(userId, 'userId');
+    requireTrimmed(role, 'role');
+
+    final id = 'schedule_overdue_${userId}_$scheduleId';
+    final reference = _collection.doc(id);
+    final existing = await reference.get();
+    // Guard: skip write if an unread alert already exists
+    if (existing.exists && existing.data()?['isRead'] != true) return;
+
+    await reference.set({
+      'id': id,
+      'title': 'Jadwal overdue',
+      'body': 'Jadwal $title sudah melewati waktu dan masih pending.',
+      'type': 'schedule_overdue',
+      'targetRole': role,
+      'userId': userId,
+      'relatedCollection': FirestoreCollections.schedules,
+      'relatedId': scheduleId,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isDeleted': false,
+    }, SetOptions(merge: true));
   }
 
   Future<void> createProductionReminder({

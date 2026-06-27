@@ -2,8 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
+    }
+
+    function hasProfile() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function currentUser() {
@@ -11,13 +17,13 @@ service cloud.firestore {
     }
 
     function activeUser() {
-      return signedIn()
+      return hasProfile()
         && currentUser().data.isActive != false
         && currentUser().data.is_active != false;
     }
 
     function profileRole() {
-      return currentUser().data.role;
+      return activeUser() ? currentUser().data.role : null;
     }
 
     function hasRole(role) {
@@ -28,12 +34,34 @@ service cloud.firestore {
       return activeUser() && profileRole() in roles;
     }
 
+    /*
+      Role utama branch backend:
+      - admin
+      - operator_lapangan
+      - operator_keuangan
+
+      Legacy dibaca agar data lama tidak langsung rusak:
+      - operator
+      - mitra
+      - peserta_edukasi
+    */
+
     function isAdmin() {
-      return hasAnyRole(['admin', 'Admin', 'ADMIN', ' admin', 'admin ', ' admin ']);
+      return hasAnyRole([
+        'admin',
+        'Admin',
+        'ADMIN',
+        ' admin',
+        'admin ',
+        ' admin '
+      ]);
     }
 
     function isOperatorLapangan() {
-      return hasAnyRole(['operator_lapangan', 'operator']);
+      return hasAnyRole([
+        'operator_lapangan',
+        'operator'
+      ]);
     }
 
     function isOperatorKeuangan() {
@@ -51,11 +79,6 @@ service cloud.firestore {
     function supportedRole(role) {
       return role in [
         'admin',
-        'Admin',
-        'ADMIN',
-        ' admin',
-        'admin ',
-        ' admin ',
         'operator_lapangan',
         'operator_keuangan',
         'operator',
@@ -74,23 +97,55 @@ service cloud.firestore {
     function updatesExistingDocument() {
       return request.resource.data.id == resource.data.id
         && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedBy == request.auth.uid;
+    }
+
+    function userCanUpdateOwnProfile(uid) {
+      return signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.id == uid
+
+        // user biasa tidak boleh mengubah role dan status aktif
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isActive == resource.data.isActive
+
+        // field profil ringan yang boleh diubah sendiri
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'id',
+          'uid',
+          'name',
+          'email',
+          'photoUrl',
+          'fcmToken',
+          'fcmTokenUpdatedAt',
+          'updatedAt'
+        ]);
     }
 
     function canReadNotification(data) {
       return activeUser() && (
-        data.userId == request.auth.uid
-        || data.targetRole in ['all', profileRole()]
-        || isAdmin()
+        isAdmin()
+        || data.userId == request.auth.uid
+        || data.targetRole == 'all'
+        || data.targetRole == profileRole()
       );
     }
 
+    /*
+      USERS
+      Admin bisa baca/tambah/edit/hapus semua user.
+      User biasa hanya bisa buat dan edit profil sendiri.
+    */
     match /users/{uid} {
       allow create: if (
         signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
         && request.resource.data.id == uid
+
+        // default sesuai rules branch backend yang kamu kirim
         && request.resource.data.role == 'operator_lapangan'
         && request.resource.data.isActive == true
       ) || (
@@ -107,105 +162,201 @@ service cloud.firestore {
       allow update: if (
         isAdmin()
         && supportedRole(request.resource.data.role)
-      ) || (
-        signedIn()
-        && request.auth.uid == uid
-        && request.resource.data.uid == uid
-        && request.resource.data.id == uid
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.isActive == resource.data.isActive
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'id',
-          'uid',
-          'name',
-          'email',
-          'photoUrl',
-          'role',
-          'isActive',
-          'fcmToken',
-          'fcmTokenUpdatedAt',
-          'updatedAt'
-        ])
-      );
+      ) || userCanUpdateOwnProfile(uid);
 
       allow delete: if isAdmin();
     }
 
+    /*
+      MASTER MODUL KEBUN
+      Semua user aktif bisa lihat.
+      Hanya admin yang boleh kelola.
+    */
     match /farm_modules/{moduleId} {
       allow read: if activeUser();
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
+    /*
+      LOGBOOK OPERASIONAL
+      Semua user aktif bisa lihat tampilan.
+      Admin dan operator lapangan bisa tambah/edit.
+      Hapus permanen hanya admin.
+    */
     match /logbooks/{logbookId} {
       allow read: if activeUser();
-      allow create: if canManageOperations() && createsOwnDocument(logbookId);
-      allow update: if canManageOperations()
-        && updatesExistingDocument()
-        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
+
+      allow create: if canManageOperations()
+        && (
+          isAdmin()
+          || createsOwnDocument(logbookId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageOperations()
+          && updatesExistingDocument()
+
+          // operator lapangan tidak boleh soft delete
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
       allow delete: if isAdmin();
     }
 
+    /*
+      INVENTORY
+      Collection branch backend: inventory
+      Bukan inventory_items.
+    */
     match /inventory/{itemId} {
       allow read: if activeUser();
-      allow create: if canManageOperations() && createsOwnDocument(itemId);
-      allow update: if canManageOperations()
-        && updatesExistingDocument()
-        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
+
+      allow create: if canManageOperations()
+        && (
+          isAdmin()
+          || createsOwnDocument(itemId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageOperations()
+          && updatesExistingDocument()
+
+          // operator lapangan boleh edit stok,
+          // tapi tidak boleh soft delete data
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
       allow delete: if isAdmin();
     }
 
+    /*
+      SCHEDULES / KALENDER OPERASIONAL
+    */
     match /schedules/{scheduleId} {
       allow read: if activeUser();
-      allow create: if canManageOperations() && createsOwnDocument(scheduleId);
-      allow update: if canManageOperations()
-        && updatesExistingDocument()
-        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
+
+      allow create: if canManageOperations()
+        && (
+          isAdmin()
+          || createsOwnDocument(scheduleId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageOperations()
+          && updatesExistingDocument()
+
+          // operator lapangan boleh update status jadwal,
+          // tapi tidak boleh soft delete
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
       allow delete: if isAdmin();
     }
 
+    /*
+      EDUKASI
+      Semua user aktif bisa lihat.
+      Hanya admin yang boleh tambah/edit/hapus.
+    */
     match /education_contents/{contentId} {
-      allow read: if activeUser() && (
-        resource.data.isPublished == true || isAdmin()
-      );
-      allow create: if isAdmin() && createsOwnDocument(contentId);
-      allow update: if isAdmin() && updatesExistingDocument();
+      allow read: if activeUser();
+
+      allow create: if isAdmin();
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
+    /*
+      FINANCE
+      Collection branch backend: finance_transactions
+      Semua user aktif bisa lihat tampilan.
+      Admin dan operator keuangan bisa tambah/edit.
+      Soft delete dan delete hanya admin.
+    */
     match /finance_transactions/{transactionId} {
       allow read: if activeUser();
-      allow create: if canManageFinance() && createsOwnDocument(transactionId);
-      allow update: if canManageFinance()
-        && updatesExistingDocument()
-        && (isAdmin() || request.resource.data.isDeleted == resource.data.isDeleted);
+
+      allow create: if canManageFinance()
+        && (
+          isAdmin()
+          || createsOwnDocument(transactionId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageFinance()
+          && updatesExistingDocument()
+
+          // operator keuangan tidak boleh soft delete
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
       allow delete: if isAdmin();
     }
 
+    /*
+      NOTIFICATIONS
+      Semua user hanya baca notifikasi yang memang untuk dirinya/role-nya.
+      Admin bisa baca dan hapus semua.
+    */
     match /notifications/{notificationId} {
       allow read: if canReadNotification(resource.data);
+
       allow create: if activeUser()
         && request.resource.data.id == notificationId
         && request.resource.data.isDeleted == false
         && canReadNotification(request.resource.data);
+
       allow update: if canReadNotification(resource.data)
         && request.resource.data.id == resource.data.id
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'isRead',
           'readAt'
         ]);
+
       allow delete: if isAdmin();
     }
 
+    /*
+      REPORT METADATA
+      Metadata laporan/export client.
+      Admin dan operator keuangan boleh kelola.
+    */
     match /report_metadata/{reportId} {
       allow read: if activeUser();
-      allow write: if isAdmin() || isOperatorKeuangan();
+
+      allow create: if canManageFinance()
+        && (
+          isAdmin()
+          || createsOwnDocument(reportId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageFinance()
+          && updatesExistingDocument()
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
+      allow delete: if isAdmin();
     }
 
+    /*
+      RECOMMENDATIONS
+      Rekomendasi MVP dibuat manual/admin-side.
+    */
     match /recommendations/{recommendationId} {
       allow read: if activeUser();
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
+    /*
+      Collection lain ditutup.
+      Jadi kalau ada typo nama collection, langsung ketahuan permission-denied.
+    */
     match /{document=**} {
       allow read, write: if false;
     }
