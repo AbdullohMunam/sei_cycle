@@ -11,7 +11,7 @@ service cloud.firestore {
     }
 
     function activeUser() {
-      return signedIn() && currentUser().data.is_active == true;
+      return signedIn() && currentUser().data.is_active != false;
     }
 
     function profileRole() {
@@ -27,7 +27,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return hasRole('admin');
+      return hasAnyRole(['admin', 'Admin', 'ADMIN', ' admin', 'admin ', ' admin ']);
     }
 
     function isOperatorLapangan() {
@@ -49,6 +49,11 @@ service cloud.firestore {
     function supportedRole(role) {
       return role in [
         'admin',
+        'Admin',
+        'ADMIN',
+        ' admin',
+        'admin ',
+        ' admin ',
         'operator_lapangan',
         'operator_keuangan',
         'operator',
@@ -111,7 +116,11 @@ service cloud.firestore {
         && request.resource.data.is_deleted == false;
       allow update: if canManageOperations()
         && request.resource.data.id == resource.data.id
-        && request.resource.data.created_by == resource.data.created_by;
+        && request.resource.data.created_by == resource.data.created_by
+        && (
+          isAdmin()
+          || request.resource.data.is_deleted == resource.data.is_deleted
+        );
       allow delete: if isAdmin();
     }
 
@@ -145,7 +154,14 @@ service cloud.firestore {
     }
 
     match /finance_records/{recordId} {
-      allow read, write: if canManageFinance();
+      allow read: if activeUser();
+      allow create: if canManageFinance()
+        && request.resource.data.id == recordId
+        && request.resource.data.created_by == request.auth.uid;
+      allow update: if canManageFinance()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.created_by == resource.data.created_by;
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/operation_feedback.dart';
 import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
@@ -47,6 +48,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
       successMessage: item == null
           ? 'Inventaris ditambahkan.'
           : 'Inventaris diperbarui.',
+    );
+  }
+
+  Future<void> _delete(InventoryItem item) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Hapus inventaris?',
+      message: 'Data ${item.name} akan dihapus dari inventaris.',
+    );
+    if (!confirmed || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.delete(item.id),
+      successMessage: 'Inventaris dihapus.',
     );
   }
 
@@ -117,7 +132,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   itemBuilder: (context, index) => _InventoryItemCard(
                     item: items[index],
                     canEdit: widget.profile.canManageInventory,
+                    canDelete: widget.profile.canDeleteInventory,
                     onEdit: () => _openForm(items[index]),
+                    onDelete: () => _delete(items[index]),
                   ),
                 ),
               ),
@@ -164,12 +181,16 @@ class _InventoryItemCard extends StatelessWidget {
   const _InventoryItemCard({
     required this.item,
     required this.canEdit,
+    required this.canDelete,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final InventoryItem item;
   final bool canEdit;
+  final bool canDelete;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -236,11 +257,27 @@ class _InventoryItemCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (canEdit)
-                      IconButton(
-                        onPressed: onEdit,
-                        icon: const Icon(Icons.edit_outlined, size: 19),
-                        tooltip: 'Edit stok',
+                    if (canEdit || canDelete)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (canEdit)
+                            IconButton(
+                              onPressed: onEdit,
+                              icon: const Icon(Icons.edit_outlined, size: 19),
+                              tooltip: 'Edit stok',
+                            ),
+                          if (canDelete)
+                            IconButton(
+                              onPressed: onDelete,
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 19,
+                                color: AppColors.error,
+                              ),
+                              tooltip: 'Hapus inventaris',
+                            ),
+                        ],
                       ),
                   ],
                 ),

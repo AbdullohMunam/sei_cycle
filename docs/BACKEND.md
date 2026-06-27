@@ -50,7 +50,7 @@ Flutter UI -> Firebase Auth -> Cloud Firestore -> firestore.rules
 ```
 
 Semua operasi data harus melewati Firestore Rules. Role disimpan pada dokumen
-`users/{uid}` dengan nilai brief `admin`, `operator_lapangan`, atau `operator_keuangan`. Legacy `operator` tetap dipetakan sebagai operator lapangan, sedangkan `mitra` dan `peserta_edukasi` tetap read-only.
+`users/{uid}` dengan nilai brief `admin`, `operator_lapangan`, atau `operator_keuangan`. Legacy `operator` tetap dipetakan sebagai operator lapangan, sedangkan `mitra` dan `peserta_edukasi` tetap read-only untuk aksi mutasi. Semua user aktif dapat membuka tampilan semua fitur; tambah dan edit dibatasi per role, sedangkan hapus data utama dibatasi untuk admin.
 
 ## Seed data awal
 

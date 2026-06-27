@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/operation_feedback.dart';
 import '../../../core/widgets/app_ui.dart';
@@ -51,6 +52,20 @@ class _FinanceScreenState extends State<FinanceScreen> {
     );
   }
 
+  Future<void> _delete(FinanceRecord record) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Hapus transaksi?',
+      message: 'Transaksi ${record.category} akan dihapus dari laporan.',
+    );
+    if (!confirmed || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.delete(record.id),
+      successMessage: 'Transaksi dihapus.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FeaturePage(
@@ -99,7 +114,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         itemBuilder: (context, index) => _FinanceRecordCard(
                           record: records[index],
                           canEdit: widget.profile.canManageFinance,
+                          canDelete: widget.profile.canDeleteFinance,
                           onEdit: () => _openForm(records[index]),
+                          onDelete: () => _delete(records[index]),
                         ),
                       ),
               ),
@@ -220,12 +237,16 @@ class _FinanceRecordCard extends StatelessWidget {
   const _FinanceRecordCard({
     required this.record,
     required this.canEdit,
+    required this.canDelete,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final FinanceRecord record;
   final bool canEdit;
+  final bool canDelete;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -289,11 +310,27 @@ class _FinanceRecordCard extends StatelessWidget {
                         ).textTheme.titleLarge?.copyWith(color: color),
                       ),
                     ),
-                    if (canEdit)
-                      IconButton(
-                        onPressed: onEdit,
-                        icon: const Icon(Icons.edit_outlined, size: 19),
-                        tooltip: 'Edit transaksi',
+                    if (canEdit || canDelete)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (canEdit)
+                            IconButton(
+                              onPressed: onEdit,
+                              icon: const Icon(Icons.edit_outlined, size: 19),
+                              tooltip: 'Edit transaksi',
+                            ),
+                          if (canDelete)
+                            IconButton(
+                              onPressed: onDelete,
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 19,
+                                color: AppColors.error,
+                              ),
+                              tooltip: 'Hapus transaksi',
+                            ),
+                        ],
                       ),
                   ],
                 ),

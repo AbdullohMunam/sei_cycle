@@ -48,4 +48,8 @@ class FinanceService {
     }
     await _collection.doc(documentId).set(data, SetOptions(merge: true));
   }
+
+  Future<void> delete(String id) {
+    return _collection.doc(id).delete();
+  }
 }

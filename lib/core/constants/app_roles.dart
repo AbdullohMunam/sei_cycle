@@ -18,16 +18,20 @@ abstract final class AppRoles {
   static const defaultRole = operatorLapangan;
 
   static String effectiveRole(String? role) {
-    return switch (role) {
+    final normalizedRole = role?.trim().toLowerCase();
+    return switch (normalizedRole) {
       admin => admin,
       operatorLapangan || legacyOperator => operatorLapangan,
       operatorKeuangan => operatorKeuangan,
-      legacyMitra || legacyPesertaEdukasi => role!,
+      legacyMitra => legacyMitra,
+      legacyPesertaEdukasi => legacyPesertaEdukasi,
       _ => legacyPesertaEdukasi,
     };
   }
 
-  static bool isAssignable(String role) => values.contains(role);
+  static bool isAssignable(String role) => values.contains(effectiveRole(role));
+
+  static String assignableRole(String role) => effectiveRole(role);
 
   static bool isLegacyReadOnly(String role) {
     final effective = effectiveRole(role);

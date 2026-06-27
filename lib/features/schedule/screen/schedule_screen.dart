@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/farm_modules.dart';
+import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/operation_feedback.dart';
 import '../../../core/widgets/app_ui.dart';
@@ -69,6 +70,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       context,
       operation: () => _service.updateStatus(item.id, status),
       successMessage: 'Status jadwal diperbarui.',
+    );
+  }
+
+  Future<void> _delete(ScheduleItem item) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Hapus jadwal?',
+      message: 'Agenda ${item.title} akan dihapus dari kalender operasional.',
+    );
+    if (!confirmed || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.delete(item.id),
+      successMessage: 'Jadwal dihapus.',
     );
   }
 
@@ -167,7 +182,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   itemBuilder: (context, index) => _ScheduleCard(
                     item: schedules[index],
                     canEdit: widget.profile.canManageSchedules,
+                    canDelete: widget.profile.canDeleteSchedules,
                     onEdit: () => _openForm(schedules[index]),
+                    onDelete: () => _delete(schedules[index]),
                     onStatusChanged: (status) =>
                         _updateStatus(schedules[index], status),
                   ),
@@ -185,13 +202,17 @@ class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
     required this.item,
     required this.canEdit,
+    required this.canDelete,
     required this.onEdit,
+    required this.onDelete,
     required this.onStatusChanged,
   });
 
   final ScheduleItem item;
   final bool canEdit;
+  final bool canDelete;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
   final ValueChanged<String> onStatusChanged;
 
   @override
@@ -261,22 +282,40 @@ class _ScheduleCard extends StatelessWidget {
               ],
             ),
           ),
-          if (canEdit)
+          if (canEdit || canDelete)
             PopupMenuButton<String>(
               tooltip: 'Opsi jadwal',
               onSelected: (value) {
                 if (value == 'edit') {
                   onEdit();
-                } else {
-                  onStatusChanged(value);
+                  return;
                 }
+                if (value == 'delete') {
+                  onDelete();
+                  return;
+                }
+                onStatusChanged(value);
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'pending', child: Text('Tandai menunggu')),
-                PopupMenuItem(value: 'done', child: Text('Tandai selesai')),
-                PopupMenuItem(value: 'skipped', child: Text('Tandai dilewati')),
-                PopupMenuDivider(),
-                PopupMenuItem(value: 'edit', child: Text('Edit jadwal')),
+              itemBuilder: (_) => <PopupMenuEntry<String>>[
+                if (canEdit) ...const [
+                  PopupMenuItem(
+                    value: 'pending',
+                    child: Text('Tandai menunggu'),
+                  ),
+                  PopupMenuItem(value: 'done', child: Text('Tandai selesai')),
+                  PopupMenuItem(
+                    value: 'skipped',
+                    child: Text('Tandai dilewati'),
+                  ),
+                  PopupMenuDivider(),
+                  PopupMenuItem(value: 'edit', child: Text('Edit jadwal')),
+                ],
+                if (canEdit && canDelete) const PopupMenuDivider(),
+                if (canDelete)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Hapus jadwal'),
+                  ),
               ],
             ),
         ],

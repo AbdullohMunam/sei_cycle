@@ -78,12 +78,13 @@ class UserProfileService {
     required String role,
     bool? isActive,
   }) {
-    if (!AppRoles.isAssignable(role)) {
+    final assignableRole = AppRoles.assignableRole(role);
+    if (!AppRoles.isAssignable(assignableRole)) {
       throw ArgumentError.value(role, 'role', 'Role tidak dapat diberikan.');
     }
 
     return _users.doc(uid).update({
-      'role': role,
+      'role': assignableRole,
       ...(isActive == null
           ? const <String, Object?>{}
           : {'is_active': isActive}),

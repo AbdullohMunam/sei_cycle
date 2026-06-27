@@ -63,4 +63,8 @@ class ScheduleService {
       'updated_at': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<void> delete(String id) {
+    return _collection.doc(id).delete();
+  }
 }

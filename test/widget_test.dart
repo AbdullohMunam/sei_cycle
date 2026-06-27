@@ -55,15 +55,35 @@ void main() {
 
     expect(admin.canManageLogbooks, isTrue);
     expect(admin.canManageFinance, isTrue);
+    expect(admin.canDeleteLogbooks, isTrue);
+    expect(admin.canDeleteInventory, isTrue);
+    expect(admin.canDeleteSchedules, isTrue);
+    expect(admin.canDeleteFinance, isTrue);
+    expect(admin.canDeleteEducation, isTrue);
+    expect(_userWithRole(' Admin ').isAdmin, isTrue);
+    expect(_userWithRole('ADMIN').canManageFinance, isTrue);
+    expect(_userWithRole('ADMIN').canDeleteFinance, isTrue);
+
+    for (final user in [admin, operatorLapangan, operatorKeuangan]) {
+      expect(user.canViewLogbooks, isTrue);
+      expect(user.canViewInventory, isTrue);
+      expect(user.canViewSchedules, isTrue);
+      expect(user.canViewFinance, isTrue);
+    }
 
     expect(operatorLapangan.canManageLogbooks, isTrue);
     expect(operatorLapangan.canManageInventory, isTrue);
     expect(operatorLapangan.canManageSchedules, isTrue);
     expect(operatorLapangan.canManageFinance, isFalse);
+    expect(operatorLapangan.canDeleteLogbooks, isFalse);
+    expect(operatorLapangan.canDeleteInventory, isFalse);
+    expect(operatorLapangan.canDeleteSchedules, isFalse);
 
-    expect(operatorKeuangan.canViewLogbooks, isTrue);
     expect(operatorKeuangan.canManageLogbooks, isFalse);
+    expect(operatorKeuangan.canManageInventory, isFalse);
+    expect(operatorKeuangan.canManageSchedules, isFalse);
     expect(operatorKeuangan.canManageFinance, isTrue);
+    expect(operatorKeuangan.canDeleteFinance, isFalse);
     expect(operatorKeuangan.canViewFinanceDashboard, isTrue);
   });
 
@@ -78,8 +98,18 @@ void main() {
     for (final user in [legacyMitra, pesertaEdukasi]) {
       expect(user.canViewDashboard, isTrue);
       expect(user.canViewEducation, isTrue);
+      expect(user.canViewLogbooks, isTrue);
+      expect(user.canViewInventory, isTrue);
+      expect(user.canViewSchedules, isTrue);
+      expect(user.canViewFinance, isTrue);
       expect(user.canManageLogbooks, isFalse);
+      expect(user.canManageInventory, isFalse);
+      expect(user.canManageSchedules, isFalse);
       expect(user.canManageFinance, isFalse);
+      expect(user.canDeleteLogbooks, isFalse);
+      expect(user.canDeleteInventory, isFalse);
+      expect(user.canDeleteSchedules, isFalse);
+      expect(user.canDeleteFinance, isFalse);
     }
   });
 

@@ -21,10 +21,9 @@ memerlukan hosting API Node.js, server Express, seeders Node.js, Firebase Admin
 SDK, atau `serviceAccountKey.json`. Seluruh akses data dilakukan melalui Firebase
 SDK dari Flutter dan diamankan oleh `firestore.rules`.
 
-Mode ini dibuat **Spark-compatible**. Repo tidak menggunakan Firebase
-Storage, Cloud Functions, atau konfigurasi backend yang membutuhkan billing
-Firebase Blaze. Materi video, SOP, atau artikel menggunakan field `external_url`
-dan FCM dibatasi untuk request permission serta token readiness dari client.
+Repo tidak menggunakan Firebase Storage, Cloud Functions, atau backend server-side.
+Materi video, SOP, atau artikel menggunakan field `external_url`, dan FCM
+dibatasi untuk request permission serta token readiness dari client.
 
 Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACKEND.md).
 
@@ -34,12 +33,12 @@ Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACK
 - Registrasi akun dan pembuatan otomatis `users/{uid}`.
 - Profil pengguna dan role `admin`, `operator_lapangan`, atau `operator_keuangan`.
 - Dashboard dari Firestore: logbook hari ini, stok rendah, jadwal pending,
-  keuangan untuk admin/operator keuangan, laba/rugi, dan grafik aktivitas 7 hari.
-- Logbook CRUD dengan soft delete serta filter modul dan tanggal.
-- Inventaris CRUD dan indikator `current_stock <= min_stock`.
-- Jadwal CRUD, filter tanggal, serta status `pending`, `done`, dan `skipped`.
-- Edukasi artikel/video/SOP dengan teks atau URL eksternal.
-- Keuangan pemasukan, pengeluaran, total, dan laba/rugi sederhana.
+  ringkasan keuangan, laba/rugi, dan grafik aktivitas 7 hari.
+- Logbook tambah/edit sesuai role, hapus khusus admin, serta filter modul dan tanggal.
+- Inventaris tambah/edit sesuai role, hapus khusus admin, dan indikator `current_stock <= min_stock`.
+- Jadwal tambah/edit sesuai role, hapus khusus admin, filter tanggal, serta status `pending`, `done`, dan `skipped`.
+- Edukasi artikel/video/SOP dengan teks atau URL eksternal, dikelola admin.
+- Keuangan pemasukan, pengeluaran, total, dan laba/rugi sederhana; hapus transaksi khusus admin.
 - Seed lima dokumen `farm_modules` dari menu Profil admin.
 - Firestore Security Rules berbasis autentikasi dan role.
 - Permintaan izin FCM tersedia di Profil, tetapi pengiriman push ditunda.
@@ -53,11 +52,11 @@ Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACK
 - [x] Pembuatan dan pembacaan profil `users/{uid}`.
 - [x] Role brief `admin`, `operator_lapangan`, dan `operator_keuangan`.
 - [x] Dashboard ringkasan dari Cloud Firestore.
-- [x] Logbook operasional dengan tambah, edit, soft delete, dan filter.
-- [x] Inventaris dengan tambah, edit, dan indikator stok rendah.
-- [x] Jadwal dengan tambah, edit, filter tanggal, dan update status.
-- [x] Edukasi artikel/video/SOP berbasis teks dan URL eksternal.
-- [x] Keuangan admin/operator keuangan untuk income, expense, total, dan laba/rugi sederhana.
+- [x] Logbook operasional dengan tambah, edit, hapus admin, dan filter.
+- [x] Inventaris dengan tambah, edit, hapus admin, dan indikator stok rendah.
+- [x] Jadwal dengan tambah, edit, hapus admin, filter tanggal, dan update status.
+- [x] Edukasi artikel/video/SOP berbasis teks dan URL eksternal, dengan hapus admin.
+- [x] Keuangan admin/operator keuangan untuk income, expense, total, laba/rugi sederhana, dan hapus admin.
 - [x] Seed `farm_modules` dari UI Profil admin, bukan seeder Node.js.
 - [x] Firestore schema, ERD, rules, dan konfigurasi deploy rules.
 - [x] FCM client readiness untuk request permission dan ambil token.
@@ -173,11 +172,11 @@ Detail field tersedia di [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md).
 
 | Role | Akses |
 |---|---|
-| `admin` | Semua fitur dan seluruh data |
-| `operator_lapangan` | CRUD logbook operasional, inventaris, jadwal, dashboard operasional, dan edukasi |
-| `operator_keuangan` | CRUD pemasukan/pengeluaran, laporan keuangan, dashboard ekonomi, edukasi, dan logbook read-only |
+| `admin` | Semua fitur, seluruh data, dan aksi hapus data utama |
+| `operator_lapangan` | Bisa melihat semua menu; tambah/edit logbook operasional, inventaris, dan jadwal |
+| `operator_keuangan` | Bisa melihat semua menu; tambah/edit pemasukan/pengeluaran dan laporan keuangan |
 | `operator` | Legacy: dipetakan sebagai `operator_lapangan` |
-| `mitra` / `peserta_edukasi` | Legacy: read-only dashboard dan edukasi |
+| `mitra` / `peserta_edukasi` | Legacy: bisa melihat semua menu, tetapi read-only |
 
 Semua akun baru memiliki role `operator_lapangan`. Untuk MVP, ubah admin atau operator keuangan secara manual:
 
@@ -186,10 +185,12 @@ Semua akun baru memiliki role `operator_lapangan`. Untuk MVP, ubah admin atau op
 3. Ubah field `role` menjadi `admin`, `operator_lapangan`, atau `operator_keuangan`.
 4. Pastikan `is_active` bernilai `true`.
 
-UI role hanya membantu pengalaman pengguna. Otorisasi final tetap dilakukan
-oleh Firestore Security Rules. `finance_records` hanya dapat dibaca/ditulis
-admin dan operator keuangan, sehingga kartu keuangan pada dashboard role lain
-dikunci.
+UI role membantu pengalaman pengguna: semua user aktif bisa membuka semua menu,
+tetapi tombol tambah/edit hanya muncul sesuai akses role dan tombol hapus hanya
+muncul untuk admin. Otorisasi final tetap dilakukan oleh Firestore Security
+Rules. `finance_records` bisa dibaca user aktif untuk tampilan dashboard/laporan,
+tetapi hanya admin dan operator keuangan yang boleh menambah atau mengubah
+transaksi; hapus transaksi dibatasi untuk admin.
 
 ## Menjalankan Aplikasi
 
@@ -253,5 +254,5 @@ authorized domains, App Check bila diperlukan, dan Firestore Rules.
 - Cloud Functions dan backend scheduler.
 - PDF/Excel report.
 - AI recommendation.
-- Upload Firebase Storage sampai billing siap.
+- Upload media lewat Firebase Storage.
 - Pengiriman FCM push notification server-side jika belum diperlukan.

@@ -61,7 +61,7 @@ Document ID: `ayam_kampung`, `maggot_bsf`, `cacing_tanah`, `lele`, `tanaman`.
 }
 ```
 
-Penghapusan dilakukan dengan mengubah `is_deleted` menjadi `true`.
+Penghapusan logbook dari UI admin dilakukan dengan mengubah `is_deleted` menjadi `true` agar catatan lama tetap menjadi arsip.
 
 ## `inventory_items/{id}`
 
@@ -136,4 +136,4 @@ Storage.
 }
 ```
 
-Tipe yang valid: `income`, `expense`. Collection ini hanya dapat diakses admin dan operator keuangan.
+Tipe yang valid: `income`, `expense`. Collection ini dapat dibaca user aktif untuk tampilan. Admin dan operator keuangan dapat menambah atau mengubah transaksi, sedangkan hapus transaksi hanya untuk admin.

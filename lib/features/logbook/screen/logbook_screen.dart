@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/farm_modules.dart';
+import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/operation_feedback.dart';
 import '../../../core/widgets/app_ui.dart';
@@ -57,33 +58,18 @@ class _LogbookScreenState extends State<LogbookScreen> {
   }
 
   Future<void> _delete(LogbookEntry entry) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus catatan?'),
-        content: const Text(
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Hapus catatan?',
+      message:
           'Catatan akan disembunyikan dari logbook, tetapi tetap tersimpan sebagai arsip.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
     );
-    if (confirmed == true && mounted) {
-      await runOperationWithFeedback(
-        context,
-        operation: () => _service.softDelete(entry.id),
-        successMessage: 'Logbook dihapus.',
-      );
-    }
+    if (!confirmed || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.softDelete(entry.id),
+      successMessage: 'Logbook dihapus.',
+    );
   }
 
   Future<void> _pickDate() async {
@@ -177,6 +163,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
                   itemBuilder: (context, index) => _LogbookEntryCard(
                     entry: entries[index],
                     canEdit: widget.profile.canManageLogbooks,
+                    canDelete: widget.profile.canDeleteLogbooks,
                     onEdit: () => _openForm(entries[index]),
                     onDelete: () => _delete(entries[index]),
                   ),
@@ -194,12 +181,14 @@ class _LogbookEntryCard extends StatelessWidget {
   const _LogbookEntryCard({
     required this.entry,
     required this.canEdit,
+    required this.canDelete,
     required this.onEdit,
     required this.onDelete,
   });
 
   final LogbookEntry entry;
   final bool canEdit;
+  final bool canDelete;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -278,30 +267,36 @@ class _LogbookEntryCard extends StatelessWidget {
               ],
             ),
           ),
-          if (canEdit)
+          if (canEdit || canDelete)
             PopupMenuButton<String>(
               tooltip: 'Opsi catatan',
               onSelected: (value) {
                 if (value == 'edit') onEdit();
                 if (value == 'delete') onDelete();
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.edit_outlined),
-                    title: Text('Edit catatan'),
+              itemBuilder: (_) => <PopupMenuEntry<String>>[
+                if (canEdit)
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Edit catatan'),
+                    ),
                   ),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.delete_outline, color: AppColors.error),
-                    title: Text('Hapus catatan'),
+                if (canEdit && canDelete) const PopupMenuDivider(),
+                if (canDelete)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.delete_outline,
+                        color: AppColors.error,
+                      ),
+                      title: Text('Hapus catatan'),
+                    ),
                   ),
-                ),
               ],
             ),
         ],

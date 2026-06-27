@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/operation_feedback.dart';
 import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
@@ -48,6 +49,20 @@ class _EducationScreenState extends State<EducationScreen> {
       successMessage: content == null
           ? 'Konten ditambahkan.'
           : 'Konten diperbarui.',
+    );
+  }
+
+  Future<void> _delete(EducationContent content) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Hapus konten?',
+      message: 'Konten ${content.title} akan dihapus dari materi edukasi.',
+    );
+    if (!confirmed || !mounted) return;
+    await runOperationWithFeedback(
+      context,
+      operation: () => _service.delete(content.id),
+      successMessage: 'Konten dihapus.',
     );
   }
 
@@ -140,7 +155,9 @@ class _EducationScreenState extends State<EducationScreen> {
                         return _EducationCard(
                           content: contents[index],
                           canEdit: widget.profile.canManageEducation,
+                          canDelete: widget.profile.canDeleteEducation,
                           onEdit: () => _openForm(contents[index]),
+                          onDelete: () => _delete(contents[index]),
                         );
                       },
                     );
@@ -159,12 +176,16 @@ class _EducationCard extends StatelessWidget {
   const _EducationCard({
     required this.content,
     required this.canEdit,
+    required this.canDelete,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final EducationContent content;
   final bool canEdit;
+  final bool canDelete;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -237,11 +258,27 @@ class _EducationCard extends StatelessWidget {
                         ),
                       ] else
                         const Spacer(),
-                      if (canEdit)
-                        IconButton(
-                          onPressed: onEdit,
-                          icon: const Icon(Icons.edit_outlined, size: 19),
-                          tooltip: 'Edit konten',
+                      if (canEdit || canDelete)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (canEdit)
+                              IconButton(
+                                onPressed: onEdit,
+                                icon: const Icon(Icons.edit_outlined, size: 19),
+                                tooltip: 'Edit konten',
+                              ),
+                            if (canDelete)
+                              IconButton(
+                                onPressed: onDelete,
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 19,
+                                  color: AppColors.error,
+                                ),
+                                tooltip: 'Hapus konten',
+                              ),
+                          ],
                         ),
                     ],
                   ),

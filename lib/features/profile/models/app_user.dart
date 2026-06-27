@@ -35,19 +35,24 @@ class AppUser {
   bool get canViewDashboard => isActive;
   bool get canViewEducation => isActive;
   bool get canManageEducation => isAdmin;
+  bool get canDeleteEducation => isAdmin;
   bool get canManageFarmModules => isAdmin;
   bool get canManageUsers => isAdmin;
+  bool get canDeleteUsers => isAdmin;
 
-  bool get canViewLogbooks =>
-      isAdmin || isOperatorLapangan || isOperatorKeuangan;
+  bool get canViewLogbooks => isActive;
   bool get canManageLogbooks => isAdmin || isOperatorLapangan;
-  bool get canViewInventory => isAdmin || isOperatorLapangan;
+  bool get canDeleteLogbooks => isAdmin;
+  bool get canViewInventory => isActive;
   bool get canManageInventory => isAdmin || isOperatorLapangan;
-  bool get canViewSchedules => isAdmin || isOperatorLapangan;
+  bool get canDeleteInventory => isAdmin;
+  bool get canViewSchedules => isActive;
   bool get canManageSchedules => isAdmin || isOperatorLapangan;
+  bool get canDeleteSchedules => isAdmin;
 
-  bool get canViewFinance => isAdmin || isOperatorKeuangan;
+  bool get canViewFinance => isActive;
   bool get canManageFinance => isAdmin || isOperatorKeuangan;
+  bool get canDeleteFinance => isAdmin;
   bool get canViewFinanceDashboard => canViewFinance;
 
   bool get canManageOperations =>

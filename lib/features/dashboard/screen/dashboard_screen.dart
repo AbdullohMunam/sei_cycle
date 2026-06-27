@@ -167,7 +167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.lock_outline,
                   color: AppColors.accentBrown,
                   message:
-                      'Ringkasan keuangan hanya ditampilkan untuk admin dan operator keuangan.',
+                      'Ringkasan keuangan belum dapat ditampilkan untuk akun ini.',
                 ),
             ],
           ),
