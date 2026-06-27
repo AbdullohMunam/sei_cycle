@@ -9,18 +9,24 @@ dan keuangan sederhana.
 MVP menggunakan arsitektur **full Firebase direct dari Flutter**:
 
 ```text
-Flutter
-  ├─ Firebase Authentication
-  ├─ Cloud Firestore
-  └─ Firebase Cloud Messaging (opsional)
+Flutter app
+  - Firebase Authentication
+  - Cloud Firestore
+  - Firebase Cloud Messaging untuk permission/token/client readiness
+  - Flutter local notification boleh dipakai untuk reminder lokal client-side
 ```
 
 Backend Express lama sudah dihapus dan tidak digunakan pada MVP. Aplikasi tidak
-memerlukan hosting API Node.js. Seluruh akses data dilakukan melalui Firebase
-SDK dan diamankan oleh `firestore.rules`.
+memerlukan hosting API Node.js, server Express, seeders Node.js, Firebase Admin
+SDK, atau `serviceAccountKey.json`. Seluruh akses data dilakukan melalui Firebase
+SDK dari Flutter dan diamankan oleh `firestore.rules`.
 
-Firebase Storage belum digunakan agar MVP tidak bergantung pada Blaze/billing.
-Materi video, SOP, atau artikel menggunakan field `external_url`.
+Mode ini dibuat **Spark-compatible**. Repo tidak menggunakan Firebase
+Storage, Cloud Functions, atau konfigurasi backend yang membutuhkan billing
+Firebase Blaze. Materi video, SOP, atau artikel menggunakan field `external_url`
+dan FCM dibatasi untuk request permission serta token readiness dari client.
+
+Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACKEND.md).
 
 ## Fitur yang Disiapkan
 
@@ -37,6 +43,37 @@ Materi video, SOP, atau artikel menggunakan field `external_url`.
 - Seed lima dokumen `farm_modules` dari menu Profil admin.
 - Firestore Security Rules berbasis autentikasi dan role.
 - Permintaan izin FCM tersedia di Profil, tetapi pengiriman push ditunda.
+
+## Checklist Brief SeiCycle
+
+### Selesai pada MVP saat ini
+
+- [x] Firebase Authentication email/password.
+- [x] Google Sign-In melalui Firebase Authentication.
+- [x] Pembuatan dan pembacaan profil `users/{uid}`.
+- [x] Role dasar `admin`, `operator`, dan `mitra`.
+- [x] Dashboard ringkasan dari Cloud Firestore.
+- [x] Logbook operasional dengan tambah, edit, soft delete, dan filter.
+- [x] Inventaris dengan tambah, edit, dan indikator stok rendah.
+- [x] Jadwal dengan tambah, edit, filter tanggal, dan update status.
+- [x] Edukasi artikel/video/SOP berbasis teks dan URL eksternal.
+- [x] Keuangan admin untuk income, expense, total, dan laba/rugi sederhana.
+- [x] Seed `farm_modules` dari UI Profil admin, bukan seeder Node.js.
+- [x] Firestore schema, ERD, rules, dan konfigurasi deploy rules.
+- [x] FCM client readiness untuk request permission dan ambil token.
+- [x] Secret hygiene untuk `.env`, service account, key, dan `node_modules/`.
+
+### Belum selesai atau sengaja ditunda
+
+- [ ] Firebase Web, iOS, macOS, Windows, atau Linux options dari FlutterFire.
+- [ ] Pengiriman push notification terjadwal atau server-side.
+- [ ] Local notification reminder client-side bila dibutuhkan.
+- [ ] Upload file atau gambar dengan Firebase Storage.
+- [ ] Cloud Functions atau backend job server-side.
+- [ ] Backend Express/API/server hosting.
+- [ ] PDF/Excel report.
+- [ ] AI recommendation.
+- [ ] App Check dan hardening produksi lanjutan.
 
 ## Prasyarat
 
@@ -115,6 +152,9 @@ Login menggunakan akun admin, buka **Profil**, lalu tekan **Seed** pada bagian
 - `lele`
 - `tanaman`
 
+Seeder ini berjalan dari Flutter client menggunakan akun admin dan Firestore
+Rules. Tidak ada script seeder Node.js atau Firebase Admin SDK.
+
 ## Collection Firestore
 
 | Collection | Document ID | Fungsi |
@@ -182,6 +222,10 @@ lib/
     education/
     finance/
     profile/
+docs/
+  BACKEND.md
+  ERD.md
+  FIRESTORE_SCHEMA.md
 ```
 
 ## Keamanan Credential
@@ -204,7 +248,8 @@ authorized domains, App Check bila diperlukan, dan Firestore Rules.
 ## Ditunda Setelah MVP
 
 - Backend Express/API sendiri.
+- Cloud Functions dan backend scheduler.
 - PDF/Excel report.
 - AI recommendation.
 - Upload Firebase Storage sampai billing siap.
-- Pengiriman FCM push notification jika belum diperlukan.
+- Pengiriman FCM push notification server-side jika belum diperlukan.

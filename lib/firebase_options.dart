@@ -27,7 +27,6 @@ class DefaultFirebaseOptions {
     appId: '1:965319862638:android:0171fb543344d4907a797f',
     messagingSenderId: '965319862638',
     projectId: 'seicycle-kebun-sei',
-    storageBucket: 'seicycle-kebun-sei.firebasestorage.app',
   );
 
   const DefaultFirebaseOptions._();
