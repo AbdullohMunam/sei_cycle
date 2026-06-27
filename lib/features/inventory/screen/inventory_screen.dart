@@ -7,6 +7,7 @@ import '../../../core/widgets/async_state_widgets.dart';
 import '../../../core/widgets/feature_page.dart';
 import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
+import '../../notification/services/notification_service.dart';
 import '../models/inventory_item.dart';
 import '../services/inventory_service.dart';
 
@@ -21,11 +22,33 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   late final InventoryService _service;
+  final Set<String> _syncedLowStockAlertIds = {};
 
   @override
   void initState() {
     super.initState();
     _service = InventoryService();
+  }
+
+  void _syncLowStockAlerts(List<InventoryItem> items) {
+    if (!widget.profile.canManageInventory) return;
+    final lowStockItems = items
+        .where(
+          (item) =>
+              item.isLowStock && !_syncedLowStockAlertIds.contains(item.id),
+        )
+        .take(5)
+        .toList();
+    if (lowStockItems.isEmpty) return;
+
+    _syncedLowStockAlertIds.addAll(lowStockItems.map((item) => item.id));
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await NotificationService().createLowStockAlerts(
+        userId: widget.profile.uid,
+        role: widget.profile.effectiveRole,
+        items: lowStockItems,
+      );
+    });
   }
 
   Future<void> _openForm([InventoryItem? item]) async {
@@ -84,6 +107,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           final state = asyncSnapshotState(snapshot);
           if (state != null) return state;
           final items = snapshot.requireData;
+          _syncLowStockAlerts(items);
           if (items.isEmpty) {
             return const EmptyState(
               title: 'Inventaris masih kosong',

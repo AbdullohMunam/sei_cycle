@@ -7,6 +7,7 @@ import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
 import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
+import '../../notification/services/notification_service.dart';
 import '../models/dashboard_summary.dart';
 import '../services/dashboard_service.dart';
 
@@ -31,9 +32,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _load() {
-    _summaryFuture = _service.load(
+    _summaryFuture = _loadSummary();
+  }
+
+  Future<DashboardSummary> _loadSummary() async {
+    final summary = await _service.load(
       includeFinance: widget.profile.canViewFinanceDashboard,
     );
+    await _createLowStockAlerts(summary);
+    return summary;
+  }
+
+  Future<void> _createLowStockAlerts(DashboardSummary summary) async {
+    if (!widget.profile.canManageInventory) return;
+    final notificationService = NotificationService();
+    for (final item in summary.lowStockPreview) {
+      await notificationService.createLowStockAlert(
+        userId: widget.profile.uid,
+        role: widget.profile.effectiveRole,
+        itemId: item.id,
+        name: item.name,
+        currentStock: item.currentStock,
+        minStock: item.minStock,
+        unit: item.unit,
+      );
+    }
   }
 
   Future<void> _refresh() async {

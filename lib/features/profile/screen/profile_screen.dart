@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/local_reminder_service.dart';
 import '../../../core/services/messaging_service.dart';
 import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/feature_page.dart';
@@ -165,7 +166,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: _busy
                   ? null
                   : () => _run(() async {
-                      await MessagingService().requestPermissionAndGetToken();
+                      await LocalReminderService().requestPermission();
+                      await MessagingService().requestPermissionAndSaveToken(
+                        widget.profile.uid,
+                      );
                     }, 'Permintaan izin notifikasi selesai.'),
               child: const Text('Aktifkan'),
             ),

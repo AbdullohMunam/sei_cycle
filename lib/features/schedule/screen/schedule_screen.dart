@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/farm_modules.dart';
+import '../../../core/services/local_reminder_service.dart';
 import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/operation_feedback.dart';
@@ -9,6 +10,7 @@ import '../../../core/widgets/async_state_widgets.dart';
 import '../../../core/widgets/feature_page.dart';
 import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
+import '../../notification/services/notification_service.dart';
 import '../models/schedule_item.dart';
 import '../services/schedule_service.dart';
 
@@ -23,6 +25,7 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   late final ScheduleService _service;
+  final Set<String> _syncedOverdueAlertIds = {};
   DateTime? _date;
 
   @override
@@ -39,20 +42,67 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (value == null || !mounted) return;
     await runOperationWithFeedback(
       context,
-      operation: () => _service.save(
-        id: item?.id,
-        title: value.title,
-        moduleId: value.moduleId,
-        scheduleType: value.scheduleType,
-        scheduledAt: value.scheduledAt,
-        status: value.status,
-        note: value.note,
-        userId: widget.profile.uid,
-      ),
+      operation: () async {
+        final scheduleId = await _service.save(
+          id: item?.id,
+          title: value.title,
+          moduleId: value.moduleId,
+          scheduleType: value.scheduleType,
+          scheduledAt: value.scheduledAt,
+          status: value.status,
+          note: value.note,
+          userId: widget.profile.uid,
+        );
+        await NotificationService().createProductionReminder(
+          scheduleId: scheduleId,
+          title: value.title,
+          userId: widget.profile.uid,
+          role: widget.profile.effectiveRole,
+          scheduledAt: value.scheduledAt,
+        );
+        if (value.status == 'pending') {
+          await LocalReminderService().scheduleScheduleReminder(
+            scheduleId: scheduleId,
+            title: value.title,
+            scheduledAt: value.scheduledAt,
+            body: '${value.scheduleType} - ${value.note}'.trim(),
+          );
+        } else {
+          await LocalReminderService().cancelScheduleReminder(scheduleId);
+        }
+      },
       successMessage: item == null
           ? 'Jadwal ditambahkan.'
           : 'Jadwal diperbarui.',
     );
+  }
+
+  void _syncOverdueAlerts(List<ScheduleItem> schedules) {
+    if (!widget.profile.canManageSchedules) return;
+    final now = DateTime.now();
+    final overdue = schedules
+        .where(
+          (item) =>
+              item.status == 'pending' &&
+              item.scheduledAt.isBefore(now) &&
+              !_syncedOverdueAlertIds.contains(item.id),
+        )
+        .take(5)
+        .toList();
+    if (overdue.isEmpty) return;
+
+    _syncedOverdueAlertIds.addAll(overdue.map((item) => item.id));
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final notificationService = NotificationService();
+      for (final item in overdue) {
+        await notificationService.createScheduleOverdueAlert(
+          scheduleId: item.id,
+          title: item.title,
+          userId: widget.profile.uid,
+          role: widget.profile.effectiveRole,
+        );
+      }
+    });
   }
 
   Future<void> _pickFilterDate() async {
@@ -68,8 +118,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _updateStatus(ScheduleItem item, String status) async {
     await runOperationWithFeedback(
       context,
-      operation: () =>
-          _service.updateStatus(item.id, status, userId: widget.profile.uid),
+      operation: () async {
+        await _service.updateStatus(
+          item.id,
+          status,
+          userId: widget.profile.uid,
+        );
+        if (status == 'pending') {
+          await LocalReminderService().scheduleScheduleReminder(
+            scheduleId: item.id,
+            title: item.title,
+            scheduledAt: item.scheduledAt,
+            body: item.scheduleType,
+          );
+        } else {
+          await LocalReminderService().cancelScheduleReminder(item.id);
+        }
+      },
       successMessage: 'Status jadwal diperbarui.',
     );
   }
@@ -83,7 +148,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (!confirmed || !mounted) return;
     await runOperationWithFeedback(
       context,
-      operation: () => _service.delete(item.id, userId: widget.profile.uid),
+      operation: () async {
+        await _service.delete(item.id, userId: widget.profile.uid);
+        await LocalReminderService().cancelScheduleReminder(item.id);
+      },
       successMessage: 'Jadwal dihapus.',
     );
   }
@@ -169,6 +237,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 final state = asyncSnapshotState(snapshot);
                 if (state != null) return state;
                 final schedules = snapshot.requireData;
+                _syncOverdueAlerts(schedules);
                 if (schedules.isEmpty) {
                   return const EmptyState(
                     title: 'Belum ada agenda pada periode ini',

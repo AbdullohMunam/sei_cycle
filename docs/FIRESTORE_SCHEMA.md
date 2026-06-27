@@ -52,6 +52,8 @@ Dokumen operasional memakai field berikut bila relevan:
   "photoUrl": "",
   "role": "operator_lapangan",
   "isActive": true,
+  "fcmToken": "optional-client-token",
+  "fcmTokenUpdatedAt": "timestamp",
   "createdAt": "timestamp",
   "updatedAt": "timestamp"
 }
@@ -146,19 +148,22 @@ Status valid: `pending`, `done`, `skipped`.
 
 ```json
 {
-  "id": "uuid",
-  "userId": "uid",
+  "id": "uuid-or-deterministic-id",
   "title": "Stok menipis",
   "body": "Pakan ayam berada di bawah batas minimum.",
-  "type": "inventory",
-  "status": "unread",
+  "type": "low_stock",
+  "targetRole": "operator_lapangan",
+  "userId": "uid-optional",
+  "relatedCollection": "inventory",
+  "relatedId": "inventory-id",
+  "isRead": false,
   "createdAt": "timestamp",
-  "updatedAt": "timestamp",
+  "scheduledAt": "timestamp-optional",
   "isDeleted": false
 }
 ```
 
-Collection ini disiapkan untuk notifikasi in-app yang dibuat oleh admin/client. Tidak ada Cloud Functions atau trigger server.
+Tipe awal: `low_stock`, `schedule_overdue`, `production_reminder`, `system`. Collection ini dipakai untuk in-app notification yang dibuat client saat user membuka dashboard/inventory/schedule. Tidak ada Cloud Functions atau trigger server.
 
 ## `education_contents/{id}`
 

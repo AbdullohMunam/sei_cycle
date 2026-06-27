@@ -20,13 +20,17 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `finance_transactions` | transaksi aktif terbaru | `isDeleted ASC`, `date DESC` |
 | `farm_modules` | modul aktif urut nama | `isActive ASC`, `name ASC` |
 | `users` | daftar user urut nama | `name ASC` |
+| `notifications` | notifikasi personal aktif terbaru | `isDeleted ASC`, `userId ASC`, `createdAt DESC` |
+| `notifications` | notifikasi role/global aktif terbaru | `isDeleted ASC`, `targetRole ASC`, `createdAt DESC` |
+| `notifications` | filter tipe notifikasi personal | `isDeleted ASC`, `type ASC`, `userId ASC`, `createdAt DESC` |
+| `notifications` | filter tipe notifikasi role/global | `isDeleted ASC`, `type ASC`, `targetRole ASC`, `createdAt DESC` |
+| `notifications` | mark all unread personal | `isDeleted ASC`, `isRead ASC`, `userId ASC` |
+| `notifications` | mark all unread role/global | `isDeleted ASC`, `isRead ASC`, `targetRole ASC` |
 
 ## Disiapkan Untuk Collection Pendukung
 
 | Collection | Query yang mungkin dibutuhkan | Field index yang disarankan |
 | --- | --- | --- |
-| `notifications` | notifikasi user aktif terbaru | `userId ASC`, `isDeleted ASC`, `createdAt DESC` |
-| `notifications` | notifikasi user berdasarkan status | `userId ASC`, `status ASC`, `isDeleted ASC`, `createdAt DESC` |
 | `report_metadata` | laporan per tipe/periode | `type ASC`, `isDeleted ASC`, `periodStart DESC` |
 | `recommendations` | rekomendasi per moduleType dan status | `moduleType ASC`, `status ASC`, `isDeleted ASC`, `priority ASC`, `createdAt DESC` |
 
@@ -34,4 +38,5 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 
 - Equality filter seperti `where('isDeleted', isEqualTo: false)` sering tetap perlu composite index ketika digabung dengan `orderBy` field lain.
 - Untuk range tanggal, Firestore mengharuskan field range menjadi urutan pertama yang relevan pada `orderBy`; service sudah memakai `activityDate` dan `date` sesuai query.
+- Query notifikasi memakai OR untuk personal dan role/global. Jika Firebase Console meminta index tambahan, buat dari link error dan update file ini.
 - Jangan membuat collection tambahan untuk file laporan atau media; batasan MVP tetap tanpa Storage dan tanpa backend server.

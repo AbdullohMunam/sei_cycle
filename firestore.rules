@@ -77,6 +77,14 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
     }
 
+    function canReadNotification(data) {
+      return activeUser() && (
+        data.userId == request.auth.uid
+        || data.targetRole in ['all', profileRole()]
+        || isAdmin()
+      );
+    }
+
     match /users/{uid} {
       allow create: if (
         signedIn()
@@ -114,6 +122,8 @@ service cloud.firestore {
           'photoUrl',
           'role',
           'isActive',
+          'fcmToken',
+          'fcmTokenUpdatedAt',
           'updatedAt'
         ])
       );
@@ -172,10 +182,18 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow read: if activeUser() && (
-        resource.data.userId == request.auth.uid || isAdmin()
-      );
-      allow create, update, delete: if isAdmin();
+      allow read: if canReadNotification(resource.data);
+      allow create: if activeUser()
+        && request.resource.data.id == notificationId
+        && request.resource.data.isDeleted == false
+        && canReadNotification(request.resource.data);
+      allow update: if canReadNotification(resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'isRead',
+          'readAt'
+        ]);
+      allow delete: if isAdmin();
     }
 
     match /report_metadata/{reportId} {

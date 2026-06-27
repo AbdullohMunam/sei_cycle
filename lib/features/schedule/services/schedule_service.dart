@@ -41,7 +41,7 @@ class ScheduleService {
         );
   }
 
-  Future<void> save({
+  Future<String> save({
     String? id,
     required String title,
     required String moduleId,
@@ -78,6 +78,7 @@ class ScheduleService {
       data['createdAt'] = now;
     }
     await _collection.doc(documentId).set(data, SetOptions(merge: true));
+    return documentId;
   }
 
   Future<void> updateStatus(

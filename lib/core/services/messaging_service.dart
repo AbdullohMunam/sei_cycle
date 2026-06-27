@@ -1,10 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import '../constants/firestore_collections.dart';
+
 class MessagingService {
-  MessagingService({FirebaseMessaging? messaging})
-    : _messaging = messaging ?? FirebaseMessaging.instance;
+  MessagingService({FirebaseMessaging? messaging, FirebaseFirestore? firestore})
+    : _messaging = messaging ?? FirebaseMessaging.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseMessaging _messaging;
+  final FirebaseFirestore _firestore;
 
   Future<String?> requestPermissionAndGetToken() async {
     final settings = await _messaging.requestPermission();
@@ -12,5 +17,16 @@ class MessagingService {
       return null;
     }
     return _messaging.getToken();
+  }
+
+  Future<String?> requestPermissionAndSaveToken(String userId) async {
+    final token = await requestPermissionAndGetToken();
+    if (token == null || token.isEmpty) return null;
+
+    await _firestore.collection(FirestoreCollections.users).doc(userId).set({
+      'fcmToken': token,
+      'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return token;
   }
 }

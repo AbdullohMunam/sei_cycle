@@ -6,6 +6,7 @@ import '../features/education/screen/education_screen.dart';
 import '../features/finance/screen/finance_screen.dart';
 import '../features/inventory/screen/inventory_screen.dart';
 import '../features/logbook/screen/logbook_screen.dart';
+import '../features/notification/screen/notification_screen.dart';
 import '../features/profile/models/app_user.dart';
 import '../features/profile/screen/profile_screen.dart';
 import '../features/schedule/screen/schedule_screen.dart';
@@ -64,6 +65,12 @@ class _AppShellState extends State<AppShell> {
         selectedIcon: Icons.account_balance_wallet_rounded,
         builder: () => FinanceScreen(profile: widget.profile),
       ),
+    _Destination(
+      label: 'Notifikasi',
+      icon: Icons.notifications_none_outlined,
+      selectedIcon: Icons.notifications_rounded,
+      builder: () => NotificationScreen(profile: widget.profile),
+    ),
     _Destination(
       label: 'Profil',
       icon: Icons.person_outline,
