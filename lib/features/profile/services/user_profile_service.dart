@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/constants/app_roles.dart';
 import '../../../core/constants/firestore_collections.dart';
@@ -42,14 +43,20 @@ class UserProfileService {
     final resolvedName = name?.trim().isNotEmpty == true
         ? name!.trim()
         : user.displayName?.trim();
-    await reference.set({
-      'id': user.uid,
-      'uid': user.uid,
-      'email': user.email ?? '',
-      'photoUrl': user.photoURL ?? '',
-      if (resolvedName?.isNotEmpty == true) 'name': resolvedName,
-      'updatedAt': now,
-    }, SetOptions(merge: true));
+
+    try {
+      await reference.set({
+        'id': user.uid,
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'photoUrl': user.photoURL ?? '',
+        if (resolvedName?.isNotEmpty == true) 'name': resolvedName,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // Abaikan error permission-denied saat update profil agar user tetap bisa login
+      debugPrint('Gagal menyinkronkan data profil (permission-denied): $e');
+    }
   }
 
   Stream<AppUser?> watchProfile(String uid) {
