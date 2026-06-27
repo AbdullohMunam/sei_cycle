@@ -57,11 +57,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
       title: 'Keuangan',
       subtitle: 'Catat arus kas sederhana untuk kebutuhan operasional kebun.',
       actions: [
-        FilledButton.icon(
-          onPressed: _openForm,
-          icon: const Icon(Icons.add),
-          label: const Text('Tambah transaksi'),
-        ),
+        if (widget.profile.canManageFinance)
+          FilledButton.icon(
+            onPressed: _openForm,
+            icon: const Icon(Icons.add),
+            label: const Text('Tambah transaksi'),
+          ),
       ],
       child: StreamBuilder<List<FinanceRecord>>(
         stream: _service.watchRecords(),
@@ -97,6 +98,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) => _FinanceRecordCard(
                           record: records[index],
+                          canEdit: widget.profile.canManageFinance,
                           onEdit: () => _openForm(records[index]),
                         ),
                       ),
@@ -215,9 +217,14 @@ class _FinanceTotalCard extends StatelessWidget {
 }
 
 class _FinanceRecordCard extends StatelessWidget {
-  const _FinanceRecordCard({required this.record, required this.onEdit});
+  const _FinanceRecordCard({
+    required this.record,
+    required this.canEdit,
+    required this.onEdit,
+  });
 
   final FinanceRecord record;
+  final bool canEdit;
   final VoidCallback onEdit;
 
   @override
@@ -282,11 +289,12 @@ class _FinanceRecordCard extends StatelessWidget {
                         ).textTheme.titleLarge?.copyWith(color: color),
                       ),
                     ),
-                    IconButton(
-                      onPressed: onEdit,
-                      icon: const Icon(Icons.edit_outlined, size: 19),
-                      tooltip: 'Edit transaksi',
-                    ),
+                    if (canEdit)
+                      IconButton(
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit_outlined, size: 19),
+                        tooltip: 'Edit transaksi',
+                      ),
                   ],
                 ),
               ],

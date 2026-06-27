@@ -24,9 +24,34 @@ class AppUser {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  bool get isAdmin => role == AppRoles.admin;
-  bool get isOperator => role == AppRoles.operator;
-  bool get canManageOperations => isAdmin || isOperator;
+  String get effectiveRole => AppRoles.effectiveRole(role);
+  String get roleLabel => AppRoles.label(role);
+
+  bool get isAdmin => effectiveRole == AppRoles.admin;
+  bool get isOperatorLapangan => effectiveRole == AppRoles.operatorLapangan;
+  bool get isOperatorKeuangan => effectiveRole == AppRoles.operatorKeuangan;
+  bool get isLegacyReadOnly => AppRoles.isLegacyReadOnly(role);
+
+  bool get canViewDashboard => isActive;
+  bool get canViewEducation => isActive;
+  bool get canManageEducation => isAdmin;
+  bool get canManageFarmModules => isAdmin;
+  bool get canManageUsers => isAdmin;
+
+  bool get canViewLogbooks =>
+      isAdmin || isOperatorLapangan || isOperatorKeuangan;
+  bool get canManageLogbooks => isAdmin || isOperatorLapangan;
+  bool get canViewInventory => isAdmin || isOperatorLapangan;
+  bool get canManageInventory => isAdmin || isOperatorLapangan;
+  bool get canViewSchedules => isAdmin || isOperatorLapangan;
+  bool get canManageSchedules => isAdmin || isOperatorLapangan;
+
+  bool get canViewFinance => isAdmin || isOperatorKeuangan;
+  bool get canManageFinance => isAdmin || isOperatorKeuangan;
+  bool get canViewFinanceDashboard => canViewFinance;
+
+  bool get canManageOperations =>
+      canManageLogbooks || canManageInventory || canManageSchedules;
 
   factory AppUser.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
@@ -37,7 +62,7 @@ class AppUser {
       name: data['name'] as String? ?? 'Pengguna SeiCycle',
       email: data['email'] as String? ?? '',
       photoUrl: data['photo_url'] as String? ?? '',
-      role: data['role'] as String? ?? AppRoles.mitra,
+      role: data['role'] as String? ?? AppRoles.legacyPesertaEdukasi,
       isActive: data['is_active'] as bool? ?? true,
       createdAt: dateTimeFromFirestore(data['created_at']),
       updatedAt: dateTimeFromFirestore(data['updated_at']),

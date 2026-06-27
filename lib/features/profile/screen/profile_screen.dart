@@ -102,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 7),
                           StatusBadge(
-                            label: _roleLabel(widget.profile.role),
+                            label: widget.profile.roleLabel,
                             color: AppColors.primaryGreen,
                             icon: Icons.badge_outlined,
                           ),
@@ -138,7 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          if (widget.profile.isAdmin) ...[
+          if (widget.profile.canManageFarmModules) ...[
             _SettingsCard(
               icon: Icons.eco_outlined,
               title: 'Modul operasional default',
@@ -246,9 +246,3 @@ class _SettingsCard extends StatelessWidget {
     );
   }
 }
-
-String _roleLabel(String role) => switch (role) {
-  'admin' => 'Administrator',
-  'operator' => 'Operator kebun',
-  _ => 'Mitra Kebun Sei',
-};

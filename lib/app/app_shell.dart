@@ -30,21 +30,21 @@ class _AppShellState extends State<AppShell> {
       selectedIcon: Icons.dashboard_rounded,
       builder: () => DashboardScreen(profile: widget.profile),
     ),
-    if (widget.profile.canManageOperations)
+    if (widget.profile.canViewLogbooks)
       _Destination(
         label: 'Logbook',
         icon: Icons.menu_book_outlined,
         selectedIcon: Icons.menu_book_rounded,
         builder: () => LogbookScreen(profile: widget.profile),
       ),
-    if (widget.profile.canManageOperations)
+    if (widget.profile.canViewInventory)
       _Destination(
         label: 'Inventaris',
         icon: Icons.inventory_2_outlined,
         selectedIcon: Icons.inventory_2_rounded,
         builder: () => InventoryScreen(profile: widget.profile),
       ),
-    if (widget.profile.canManageOperations)
+    if (widget.profile.canViewSchedules)
       _Destination(
         label: 'Jadwal',
         icon: Icons.event_note_outlined,
@@ -57,7 +57,7 @@ class _AppShellState extends State<AppShell> {
       selectedIcon: Icons.school_rounded,
       builder: () => EducationScreen(profile: widget.profile),
     ),
-    if (widget.profile.isAdmin)
+    if (widget.profile.canViewFinance)
       _Destination(
         label: 'Keuangan',
         icon: Icons.account_balance_wallet_outlined,
@@ -415,7 +415,7 @@ class _DesktopShell extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _roleLabel(profile.role),
+                                  profile.roleLabel,
                                   style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(color: AppColors.textMuted),
                                 ),
@@ -545,12 +545,6 @@ class _ProfileAvatar extends StatelessWidget {
     );
   }
 }
-
-String _roleLabel(String role) => switch (role) {
-  'admin' => 'Administrator',
-  'operator' => 'Operator kebun',
-  _ => 'Mitra Kebun Sei',
-};
 
 String _capitalize(String value) =>
     value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';

@@ -56,7 +56,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       title: 'Inventaris',
       subtitle: 'Pantau pakan, alat, benih, dan kebutuhan rutin Kebun Sei.',
       actions: [
-        if (widget.profile.canManageOperations)
+        if (widget.profile.canManageInventory)
           FilledButton.icon(
             onPressed: _openForm,
             icon: const Icon(Icons.add),
@@ -116,7 +116,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) => _InventoryItemCard(
                     item: items[index],
-                    canEdit: widget.profile.canManageOperations,
+                    canEdit: widget.profile.canManageInventory,
                     onEdit: () => _openForm(items[index]),
                   ),
                 ),

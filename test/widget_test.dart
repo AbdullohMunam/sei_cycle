@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sei_cycle/core/constants/app_roles.dart';
 import 'package:sei_cycle/core/constants/farm_modules.dart';
 import 'package:sei_cycle/core/widgets/app_ui.dart';
 import 'package:sei_cycle/core/widgets/async_state_widgets.dart';
 import 'package:sei_cycle/core/widgets/feature_page.dart';
 import 'package:sei_cycle/features/auth/screen/widgets/auth_frame.dart';
+import 'package:sei_cycle/features/profile/models/app_user.dart';
 import 'package:sei_cycle/theme/app_theme.dart';
 
 void main() {
@@ -44,6 +46,41 @@ void main() {
     );
 
     expect(asyncSnapshotState(snapshot, allowNullData: true), isNull);
+  });
+
+  test('seicycle role capabilities match the current brief', () {
+    final admin = _userWithRole(AppRoles.admin);
+    final operatorLapangan = _userWithRole(AppRoles.operatorLapangan);
+    final operatorKeuangan = _userWithRole(AppRoles.operatorKeuangan);
+
+    expect(admin.canManageLogbooks, isTrue);
+    expect(admin.canManageFinance, isTrue);
+
+    expect(operatorLapangan.canManageLogbooks, isTrue);
+    expect(operatorLapangan.canManageInventory, isTrue);
+    expect(operatorLapangan.canManageSchedules, isTrue);
+    expect(operatorLapangan.canManageFinance, isFalse);
+
+    expect(operatorKeuangan.canViewLogbooks, isTrue);
+    expect(operatorKeuangan.canManageLogbooks, isFalse);
+    expect(operatorKeuangan.canManageFinance, isTrue);
+    expect(operatorKeuangan.canViewFinanceDashboard, isTrue);
+  });
+
+  test('legacy roles stay migration-safe', () {
+    final legacyOperator = _userWithRole(AppRoles.legacyOperator);
+    final legacyMitra = _userWithRole(AppRoles.legacyMitra);
+    final pesertaEdukasi = _userWithRole(AppRoles.legacyPesertaEdukasi);
+
+    expect(legacyOperator.effectiveRole, AppRoles.operatorLapangan);
+    expect(legacyOperator.canManageLogbooks, isTrue);
+
+    for (final user in [legacyMitra, pesertaEdukasi]) {
+      expect(user.canViewDashboard, isTrue);
+      expect(user.canViewEducation, isTrue);
+      expect(user.canManageLogbooks, isFalse);
+      expect(user.canManageFinance, isFalse);
+    }
   });
 
   testWidgets('auth layout fits a compact Android viewport', (tester) async {
@@ -119,4 +156,18 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Logbook Operasional'), findsOneWidget);
   });
+}
+
+AppUser _userWithRole(String role) {
+  final now = DateTime(2026);
+  return AppUser(
+    uid: 'uid-$role',
+    name: 'Pengguna $role',
+    email: '$role@example.com',
+    photoUrl: '',
+    role: role,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  );
 }

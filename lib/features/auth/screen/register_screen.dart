@@ -57,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return AuthFrame(
       title: 'Buat akun SeiCycle',
       subtitle:
-          'Akun baru dimulai sebagai mitra. Admin dapat menyesuaikan akses sesuai kebutuhan kebun.',
+          'Akun baru dimulai sebagai operator lapangan. Admin dapat menyesuaikan akses sesuai kebutuhan kebun.',
       showBack: true,
       child: Form(
         key: _formKey,

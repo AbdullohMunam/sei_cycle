@@ -14,44 +14,83 @@ service cloud.firestore {
       return signedIn() && currentUser().data.is_active == true;
     }
 
+    function profileRole() {
+      return currentUser().data.role;
+    }
+
     function hasRole(role) {
-      return activeUser() && currentUser().data.role == role;
+      return activeUser() && profileRole() == role;
+    }
+
+    function hasAnyRole(roles) {
+      return activeUser() && profileRole() in roles;
     }
 
     function isAdmin() {
       return hasRole('admin');
     }
 
-    function isOperator() {
-      return hasRole('operator');
+    function isOperatorLapangan() {
+      return hasAnyRole(['operator_lapangan', 'operator']);
+    }
+
+    function isOperatorKeuangan() {
+      return hasRole('operator_keuangan');
     }
 
     function canManageOperations() {
-      return isAdmin() || isOperator();
+      return isAdmin() || isOperatorLapangan();
     }
+
+    function canManageFinance() {
+      return isAdmin() || isOperatorKeuangan();
+    }
+
+    function supportedRole(role) {
+      return role in [
+        'admin',
+        'operator_lapangan',
+        'operator_keuangan',
+        'operator',
+        'mitra',
+        'peserta_edukasi'
+      ];
+    }
+
 
     match /users/{uid} {
       allow create: if (
         signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
-        && request.resource.data.role == 'mitra'
+        && request.resource.data.role == 'operator_lapangan'
         && request.resource.data.is_active == true
-      ) || isAdmin();
+      ) || (
+        isAdmin()
+        && request.resource.data.uid == uid
+        && supportedRole(request.resource.data.role)
+      );
 
       allow read: if signedIn() && (
         request.auth.uid == uid || isAdmin()
       );
 
-      allow update: if isAdmin() || (
+      allow update: if (
+        isAdmin()
+        && supportedRole(request.resource.data.role)
+      ) || (
         signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.is_active == resource.data.is_active
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'uid',
           'name',
           'email',
           'photo_url',
+          'role',
+          'is_active',
           'updated_at'
         ])
       );
@@ -106,7 +145,7 @@ service cloud.firestore {
     }
 
     match /finance_records/{recordId} {
-      allow read, write: if isAdmin();
+      allow read, write: if canManageFinance();
     }
 
     match /{document=**} {

@@ -102,7 +102,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
       title: 'Logbook Operasional',
       subtitle: 'Catatan harian Ayam, Maggot, Cacing, Lele, dan Tanaman.',
       actions: [
-        if (widget.profile.canManageOperations)
+        if (widget.profile.canManageLogbooks)
           FilledButton.icon(
             onPressed: _openForm,
             icon: const Icon(Icons.add),
@@ -176,7 +176,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) => _LogbookEntryCard(
                     entry: entries[index],
-                    canEdit: widget.profile.canManageOperations,
+                    canEdit: widget.profile.canManageLogbooks,
                     onEdit: () => _openForm(entries[index]),
                     onDelete: () => _delete(entries[index]),
                   ),

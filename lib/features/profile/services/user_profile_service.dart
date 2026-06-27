@@ -29,7 +29,7 @@ class UserProfileService {
                   : 'Pengguna SeiCycle'),
         'email': user.email ?? '',
         'photo_url': user.photoURL ?? '',
-        'role': AppRoles.mitra,
+        'role': AppRoles.defaultRole,
         'is_active': true,
         'created_at': now,
         'updated_at': now,
@@ -58,9 +58,35 @@ class UserProfileService {
         );
   }
 
+  Stream<List<AppUser>> watchUsers() {
+    return _users.snapshots().map((snapshot) {
+      final users = snapshot.docs.map(AppUser.fromDocument).toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return users;
+    });
+  }
+
   Future<void> updateName(String uid, String name) {
     return _users.doc(uid).update({
       'name': name.trim(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updateRole({
+    required String uid,
+    required String role,
+    bool? isActive,
+  }) {
+    if (!AppRoles.isAssignable(role)) {
+      throw ArgumentError.value(role, 'role', 'Role tidak dapat diberikan.');
+    }
+
+    return _users.doc(uid).update({
+      'role': role,
+      ...(isActive == null
+          ? const <String, Object?>{}
+          : {'is_active': isActive}),
       'updated_at': FieldValue.serverTimestamp(),
     });
   }

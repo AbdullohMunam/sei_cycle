@@ -57,7 +57,7 @@ class _EducationScreenState extends State<EducationScreen> {
       title: 'Edukasi Kebun Sei',
       subtitle: 'Panduan lapangan, artikel, video, dan SOP untuk tim kebun.',
       actions: [
-        if (widget.profile.isAdmin)
+        if (widget.profile.canManageEducation)
           FilledButton.icon(
             onPressed: _openForm,
             icon: const Icon(Icons.add),
@@ -96,7 +96,7 @@ class _EducationScreenState extends State<EducationScreen> {
           Expanded(
             child: StreamBuilder<List<EducationContent>>(
               stream: _service.watchContents(
-                includeDrafts: widget.profile.isAdmin,
+                includeDrafts: widget.profile.canManageEducation,
               ),
               builder: (context, snapshot) {
                 final state = asyncSnapshotState(snapshot);
@@ -139,7 +139,7 @@ class _EducationScreenState extends State<EducationScreen> {
                       itemBuilder: (context, index) {
                         return _EducationCard(
                           content: contents[index],
-                          canEdit: widget.profile.isAdmin,
+                          canEdit: widget.profile.canManageEducation,
                           onEdit: () => _openForm(contents[index]),
                         );
                       },

@@ -78,7 +78,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       title: 'Kalender Operasional',
       subtitle: 'Jadwal pakan, perawatan, pemupukan, dan panen Kebun Sei.',
       actions: [
-        if (widget.profile.canManageOperations)
+        if (widget.profile.canManageSchedules)
           FilledButton.icon(
             onPressed: _openForm,
             icon: const Icon(Icons.add),
@@ -166,7 +166,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) => _ScheduleCard(
                     item: schedules[index],
-                    canEdit: widget.profile.canManageOperations,
+                    canEdit: widget.profile.canManageSchedules,
                     onEdit: () => _openForm(schedules[index]),
                     onStatusChanged: (status) =>
                         _updateStatus(schedules[index], status),

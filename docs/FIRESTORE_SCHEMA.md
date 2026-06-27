@@ -11,15 +11,18 @@ di Flutter menggunakan UUID.
   "name": "Nama Pengguna",
   "email": "user@example.com",
   "photo_url": "",
-  "role": "mitra",
+  "role": "operator_lapangan",
   "is_active": true,
   "created_at": "timestamp",
   "updated_at": "timestamp"
 }
 ```
 
-Role yang valid: `admin`, `operator`, `mitra`. Akun baru selalu dibuat sebagai
-`mitra`; admin MVP diubah manual melalui Firebase Console.
+Role brief yang valid: `admin`, `operator_lapangan`, `operator_keuangan`. Akun
+baru selalu dibuat sebagai `operator_lapangan`; admin atau operator keuangan MVP
+diubah manual melalui Firebase Console. Legacy `operator` dipetakan sebagai
+`operator_lapangan`, sedangkan legacy `mitra` dan `peserta_edukasi` tetap
+read-only untuk dashboard/edukasi.
 
 ## `farm_modules/{module_id}`
 
@@ -133,4 +136,4 @@ Storage.
 }
 ```
 
-Tipe yang valid: `income`, `expense`. Collection ini hanya dapat diakses admin.
+Tipe yang valid: `income`, `expense`. Collection ini hanya dapat diakses admin dan operator keuangan.

@@ -32,9 +32,9 @@ Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACK
 
 - Login email/password dan Google.
 - Registrasi akun dan pembuatan otomatis `users/{uid}`.
-- Profil pengguna dan role `admin`, `operator`, atau `mitra`.
+- Profil pengguna dan role `admin`, `operator_lapangan`, atau `operator_keuangan`.
 - Dashboard dari Firestore: logbook hari ini, stok rendah, jadwal pending,
-  keuangan admin, laba/rugi, dan grafik aktivitas 7 hari.
+  keuangan untuk admin/operator keuangan, laba/rugi, dan grafik aktivitas 7 hari.
 - Logbook CRUD dengan soft delete serta filter modul dan tanggal.
 - Inventaris CRUD dan indikator `current_stock <= min_stock`.
 - Jadwal CRUD, filter tanggal, serta status `pending`, `done`, dan `skipped`.
@@ -51,13 +51,13 @@ Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACK
 - [x] Firebase Authentication email/password.
 - [x] Google Sign-In melalui Firebase Authentication.
 - [x] Pembuatan dan pembacaan profil `users/{uid}`.
-- [x] Role dasar `admin`, `operator`, dan `mitra`.
+- [x] Role brief `admin`, `operator_lapangan`, dan `operator_keuangan`.
 - [x] Dashboard ringkasan dari Cloud Firestore.
 - [x] Logbook operasional dengan tambah, edit, soft delete, dan filter.
 - [x] Inventaris dengan tambah, edit, dan indikator stok rendah.
 - [x] Jadwal dengan tambah, edit, filter tanggal, dan update status.
 - [x] Edukasi artikel/video/SOP berbasis teks dan URL eksternal.
-- [x] Keuangan admin untuk income, expense, total, dan laba/rugi sederhana.
+- [x] Keuangan admin/operator keuangan untuk income, expense, total, dan laba/rugi sederhana.
 - [x] Seed `farm_modules` dari UI Profil admin, bukan seeder Node.js.
 - [x] Firestore schema, ERD, rules, dan konfigurasi deploy rules.
 - [x] FCM client readiness untuk request permission dan ambil token.
@@ -165,7 +165,7 @@ Rules. Tidak ada script seeder Node.js atau Firebase Admin SDK.
 | `inventory_items` | UUID | Stok dan batas minimum |
 | `schedules` | UUID | Kalender dan status pekerjaan |
 | `education_contents` | UUID | Artikel, video URL, dan SOP |
-| `finance_records` | UUID | Pemasukan dan pengeluaran admin |
+| `finance_records` | UUID | Pemasukan dan pengeluaran admin/operator keuangan |
 
 Detail field tersedia di [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md).
 
@@ -174,20 +174,22 @@ Detail field tersedia di [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md).
 | Role | Akses |
 |---|---|
 | `admin` | Semua fitur dan seluruh data |
-| `operator` | Baca data utama; tambah/edit logbook, inventaris, dan jadwal |
-| `mitra` | Read-only untuk dashboard dan edukasi pada UI |
+| `operator_lapangan` | CRUD logbook operasional, inventaris, jadwal, dashboard operasional, dan edukasi |
+| `operator_keuangan` | CRUD pemasukan/pengeluaran, laporan keuangan, dashboard ekonomi, edukasi, dan logbook read-only |
+| `operator` | Legacy: dipetakan sebagai `operator_lapangan` |
+| `mitra` / `peserta_edukasi` | Legacy: read-only dashboard dan edukasi |
 
-Semua akun baru memiliki role `mitra`. Untuk MVP, ubah admin secara manual:
+Semua akun baru memiliki role `operator_lapangan`. Untuk MVP, ubah admin atau operator keuangan secara manual:
 
 1. Buka **Firestore Database > users**.
 2. Pilih dokumen dengan ID UID pengguna.
-3. Ubah field `role` menjadi `admin`.
+3. Ubah field `role` menjadi `admin`, `operator_lapangan`, atau `operator_keuangan`.
 4. Pastikan `is_active` bernilai `true`.
 
 UI role hanya membantu pengalaman pengguna. Otorisasi final tetap dilakukan
 oleh Firestore Security Rules. `finance_records` hanya dapat dibaca/ditulis
-admin, sehingga kartu keuangan pada dashboard non-admin menampilkan
-`Khusus admin`.
+admin dan operator keuangan, sehingga kartu keuangan pada dashboard role lain
+dikunci.
 
 ## Menjalankan Aplikasi
 

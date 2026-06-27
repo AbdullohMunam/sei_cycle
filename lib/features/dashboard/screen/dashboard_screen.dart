@@ -31,7 +31,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _load() {
-    _summaryFuture = _service.load(includeFinance: widget.profile.isAdmin);
+    _summaryFuture = _service.load(
+      includeFinance: widget.profile.canViewFinanceDashboard,
+    );
   }
 
   Future<void> _refresh() async {
@@ -165,7 +167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.lock_outline,
                   color: AppColors.accentBrown,
                   message:
-                      'Ringkasan keuangan hanya ditampilkan untuk admin Kebun Sei.',
+                      'Ringkasan keuangan hanya ditampilkan untuk admin dan operator keuangan.',
                 ),
             ],
           ),
@@ -261,7 +263,7 @@ class _WelcomePanel extends StatelessWidget {
                             ),
                             _WelcomeBadge(
                               icon: Icons.badge_outlined,
-                              label: _roleLabel(profile.role),
+                              label: profile.roleLabel,
                             ),
                           ],
                         ),
@@ -541,9 +543,3 @@ String _firstName(String name) {
   if (trimmed.isEmpty) return 'Rekan Kebun';
   return trimmed.split(RegExp(r'\s+')).first;
 }
-
-String _roleLabel(String role) => switch (role) {
-  'admin' => 'Administrator',
-  'operator' => 'Operator kebun',
-  _ => 'Mitra',
-};
