@@ -67,7 +67,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: AppSpacing.section),
               const SectionTitle(
                 title: 'Ringkasan operasional',
-                subtitle: 'Kondisi pencatatan Kebun Sei hari ini.',
+                subtitle:
+                    'Logbook, stok, dan agenda dari data Firestore aktif.',
                 trailing: StatusBadge(
                   label: 'Data langsung',
                   color: AppColors.success,
@@ -78,35 +79,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _MetricGrid(
                 metrics: [
                   _MetricData(
-                    title: 'Logbook hari ini',
+                    title: 'Aktivitas hari ini',
                     value: '${summary.todayLogbooks}',
                     helper: summary.todayLogbooks == 0
-                        ? 'Belum ada aktivitas tercatat'
-                        : 'Catatan operasional masuk',
-                    icon: Icons.menu_book_outlined,
+                        ? 'Belum ada logbook hari ini'
+                        : 'Logbook masuk hari ini',
+                    icon: Icons.today_outlined,
                     color: AppColors.primaryGreen,
                   ),
                   _MetricData(
-                    title: 'Stok perlu perhatian',
+                    title: 'Aktivitas minggu ini',
+                    value: '${summary.weeklyLogbooks}',
+                    helper: 'Akumulasi sejak awal minggu',
+                    icon: Icons.date_range_outlined,
+                    color: AppColors.info,
+                  ),
+                  _MetricData(
+                    title: 'Total item inventaris',
+                    value: '${summary.totalInventoryItems}',
+                    helper: 'Item aktif dalam inventaris',
+                    icon: Icons.inventory_2_outlined,
+                    color: AppColors.accentBrown,
+                  ),
+                  _MetricData(
+                    title: 'Stok rendah',
                     value: '${summary.lowStockItems}',
                     helper: summary.lowStockItems == 0
                         ? 'Seluruh stok masih aman'
                         : 'Item menyentuh batas minimum',
-                    icon: Icons.inventory_2_outlined,
+                    icon: Icons.warning_amber_rounded,
                     color: summary.lowStockItems == 0
                         ? AppColors.success
                         : AppColors.warning,
                   ),
                   _MetricData(
-                    title: 'Jadwal menunggu',
-                    value: '${summary.pendingSchedules}',
+                    title: 'Jadwal hari ini',
+                    value: '${summary.todaySchedules}',
+                    helper: 'Agenda operasional tanggal ini',
+                    icon: Icons.event_available_outlined,
+                    color: AppColors.primaryGreen,
+                  ),
+                  _MetricData(
+                    title: 'Jadwal terlambat',
+                    value: '${summary.overdueSchedules}',
                     helper: summary.pendingSchedules == 0
-                        ? 'Tidak ada agenda tertunda'
-                        : 'Agenda masih perlu ditindaklanjuti',
-                    icon: Icons.event_note_outlined,
-                    color: AppColors.info,
+                        ? 'Tidak ada agenda pending'
+                        : '${summary.pendingSchedules} agenda masih pending',
+                    icon: Icons.event_busy_outlined,
+                    color: summary.overdueSchedules == 0
+                        ? AppColors.success
+                        : AppColors.error,
                   ),
                 ],
+              ),
+              const SizedBox(height: 14),
+              _DashboardTwoColumn(
+                left: _ModuleActivityPanel(items: summary.logbooksByModule),
+                right: _LowStockPanel(items: summary.lowStockPreview),
               ),
               const SizedBox(height: AppSpacing.section),
               SectionTitle(
@@ -128,33 +157,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: AppSpacing.section),
               const SectionTitle(
-                title: 'Keuangan sederhana',
-                subtitle: 'Ringkasan arus kas operasional yang tercatat.',
+                title: 'Ringkasan ekonomi',
+                subtitle: 'Arus kas sederhana untuk bulan berjalan.',
               ),
               const SizedBox(height: 12),
               if (summary.financeVisible)
                 _MetricGrid(
                   metrics: [
                     _MetricData(
-                      title: 'Total pemasukan',
+                      title: 'Pemasukan bulan ini',
                       value: currencyFormat.format(summary.totalIncome),
-                      helper: 'Akumulasi seluruh catatan',
+                      helper: 'Transaksi income bulan berjalan',
                       icon: Icons.south_west_rounded,
                       color: AppColors.success,
                     ),
                     _MetricData(
-                      title: 'Total pengeluaran',
+                      title: 'Pengeluaran bulan ini',
                       value: currencyFormat.format(summary.totalExpense),
-                      helper: 'Biaya operasional tercatat',
+                      helper: 'Transaksi expense bulan berjalan',
                       icon: Icons.north_east_rounded,
                       color: AppColors.error,
                     ),
                     _MetricData(
-                      title: 'Laba / rugi',
+                      title: 'Laba / rugi bulan ini',
                       value: currencyFormat.format(summary.profitLoss),
                       helper: summary.profitLoss >= 0
-                          ? 'Arus kas masih positif'
-                          : 'Pengeluaran melebihi pemasukan',
+                          ? 'Arus kas bulan ini positif'
+                          : 'Pengeluaran bulan ini lebih besar',
                       icon: Icons.account_balance_wallet_outlined,
                       color: summary.profitLoss >= 0
                           ? AppColors.primaryGreen
@@ -169,6 +198,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   message:
                       'Ringkasan keuangan belum dapat ditampilkan untuk akun ini.',
                 ),
+              const SizedBox(height: AppSpacing.section),
+              const SectionTitle(
+                title: 'Siklus nutrisi',
+                subtitle:
+                    'Alur ekonomi sirkular dari ayam, organik, maggot, cacing, lele, dan tanaman.',
+              ),
+              const SizedBox(height: 12),
+              _NutrientCyclePanel(
+                nodes: summary.nutrientCycleNodes,
+                edges: summary.nutrientCycleEdges,
+              ),
             ],
           ),
         );
@@ -245,7 +285,7 @@ class _WelcomePanel extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Pantau pencatatan, stok, dan agenda dari satu tempat.',
+                          'Pantau pencatatan, stok, agenda, dan siklus nutrisi dari satu tempat.',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
@@ -330,6 +370,195 @@ class _WelcomeBadge extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DashboardTwoColumn extends StatelessWidget {
+  const _DashboardTwoColumn({required this.left, required this.right});
+
+  final Widget left;
+  final Widget right;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 760) {
+          return Column(children: [left, const SizedBox(height: 12), right]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 12),
+            Expanded(child: right),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ModuleActivityPanel extends StatelessWidget {
+  const _ModuleActivityPanel({required this.items});
+
+  final List<ModuleActivitySummary> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxTotal = items.fold<int>(
+      0,
+      (current, item) => item.total > current ? item.total : current,
+    );
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Aktivitas per modul',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          for (final item in items) ...[
+            _ModuleActivityRow(item: item, maxTotal: maxTotal),
+            if (item != items.last) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ModuleActivityRow extends StatelessWidget {
+  const _ModuleActivityRow({required this.item, required this.maxTotal});
+
+  final ModuleActivitySummary item;
+  final int maxTotal;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = maxTotal == 0 ? 0.0 : item.total / maxTotal;
+    final color = _moduleColor(item.moduleType);
+    return Row(
+      children: [
+        AppIconBox(icon: _moduleIcon(item.moduleType), color: color, size: 34),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${item.total}',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: AppColors.progressBg,
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LowStockPanel extends StatelessWidget {
+  const _LowStockPanel({required this.items});
+
+  final List<LowStockDashboardItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Stok rendah teratas',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          if (items.isEmpty)
+            const InlineMessage(
+              icon: Icons.check_circle_outline,
+              color: AppColors.success,
+              message: 'Tidak ada stok yang berada di bawah batas minimum.',
+            )
+          else
+            for (final item in items) ...[
+              _LowStockRow(item: item),
+              if (item != items.last) const Divider(height: 18),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LowStockRow extends StatelessWidget {
+  const _LowStockRow({required this.item});
+
+  final LowStockDashboardItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.warning_amber_rounded,
+          color: AppColors.warning,
+          size: 20,
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${_number(item.currentStock)} / ${_number(item.minStock)} ${item.unit}',
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -527,8 +756,135 @@ class _ActivityChart extends StatelessWidget {
   }
 }
 
+class _NutrientCyclePanel extends StatelessWidget {
+  const _NutrientCyclePanel({required this.nodes, required this.edges});
+
+  final List<NutrientCycleNode> nodes;
+  final List<NutrientCycleEdge> edges;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final node in nodes)
+                _NutrientNodeChip(node: node, color: _cycleColor(node.id)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          for (final edge in edges) ...[
+            _NutrientEdgeRow(edge: edge),
+            if (edge != edges.last) const SizedBox(height: 9),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _NutrientNodeChip extends StatelessWidget {
+  const _NutrientNodeChip({required this.node, required this.color});
+
+  final NutrientCycleNode node;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 150, maxWidth: 230),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_cycleIcon(node.id), size: 20, color: color),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    node.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    node.description,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textMuted,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NutrientEdgeRow extends StatelessWidget {
+  const _NutrientEdgeRow({required this.edge});
+
+  final NutrientCycleEdge edge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.arrow_forward_rounded,
+          color: AppColors.primaryGreen,
+          size: 18,
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '${_cycleLabel(edge.from)} ke ${_cycleLabel(edge.to)}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                TextSpan(text: ' melalui ${edge.label}'),
+              ],
+            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textMedium),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 int _activityTotal(List<DailyActivityPoint> points) =>
     points.fold(0, (total, point) => total + point.total);
+
+String _number(double value) => value == value.roundToDouble()
+    ? value.toStringAsFixed(0)
+    : value.toStringAsFixed(1);
 
 String _greeting() {
   final hour = DateTime.now().hour;
@@ -543,3 +899,48 @@ String _firstName(String name) {
   if (trimmed.isEmpty) return 'Rekan Kebun';
   return trimmed.split(RegExp(r'\s+')).first;
 }
+
+Color _moduleColor(String moduleType) => switch (moduleType) {
+  'ayam_kampung' => AppColors.warning,
+  'maggot_bsf' => AppColors.accentBrown,
+  'cacing_tanah' => AppColors.primaryGreen,
+  'lele' => AppColors.info,
+  'tanaman' => AppColors.success,
+  _ => AppColors.textMuted,
+};
+
+IconData _moduleIcon(String moduleType) => switch (moduleType) {
+  'ayam_kampung' => Icons.egg_alt_outlined,
+  'maggot_bsf' => Icons.pest_control_outlined,
+  'cacing_tanah' => Icons.grass_outlined,
+  'lele' => Icons.water_drop_outlined,
+  'tanaman' => Icons.eco_outlined,
+  _ => Icons.category_outlined,
+};
+
+Color _cycleColor(String id) => switch (id) {
+  'ayam' => AppColors.warning,
+  'organik' => AppColors.accentBrown,
+  'maggot_cacing' => AppColors.primaryGreen,
+  'kompos' => AppColors.success,
+  'lele_tanaman' => AppColors.info,
+  _ => AppColors.textMuted,
+};
+
+IconData _cycleIcon(String id) => switch (id) {
+  'ayam' => Icons.egg_alt_outlined,
+  'organik' => Icons.recycling_rounded,
+  'maggot_cacing' => Icons.pest_control_outlined,
+  'kompos' => Icons.compost_outlined,
+  'lele_tanaman' => Icons.water_drop_outlined,
+  _ => Icons.eco_outlined,
+};
+
+String _cycleLabel(String id) => switch (id) {
+  'ayam' => 'Ayam',
+  'organik' => 'Sisa organik',
+  'maggot_cacing' => 'Maggot/cacing',
+  'kompos' => 'Kompos',
+  'lele_tanaman' => 'Lele/tanaman',
+  _ => id,
+};

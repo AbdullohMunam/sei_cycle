@@ -11,8 +11,10 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `logbooks` | filter tanggal + logbook aktif terbaru | `isDeleted ASC`, `activityDate DESC` |
 | `logbooks` | filter moduleType + tanggal + logbook aktif terbaru | `isDeleted ASC`, `moduleType ASC`, `activityDate DESC` |
 | `inventory` | item aktif, stok menipis di atas, urut nama | `isDeleted ASC`, `isLowStock DESC`, `name ASC` |
+| `inventory` | dashboard stok rendah maksimal 5 item | `isDeleted ASC`, `isLowStock ASC`, `name ASC` |
 | `schedules` | jadwal aktif urut tanggal | `isDeleted ASC`, `date ASC` |
 | `schedules` | dashboard jadwal pending | `isDeleted ASC`, `status ASC` |
+| `schedules` | dashboard jadwal overdue | `isDeleted ASC`, `status ASC`, `date ASC` |
 | `education_contents` | konten aktif terbaru untuk admin | `isDeleted ASC`, `updatedAt DESC` |
 | `education_contents` | konten published aktif terbaru untuk user | `isDeleted ASC`, `isPublished ASC`, `updatedAt DESC` |
 | `finance_transactions` | transaksi aktif terbaru | `isDeleted ASC`, `date DESC` |
