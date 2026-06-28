@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
@@ -19,24 +21,20 @@ class NotificationService {
 
   /// Streams the count of unread notifications for the given user/role.
   /// Useful for showing a badge count in navigation.
-  Stream<int> watchUnreadCount({
-    required String userId,
-    required String role,
-  }) {
+  Stream<int> watchUnreadCount({required String userId, required String role}) {
     requireTrimmed(userId, 'userId');
     requireTrimmed(role, 'role');
 
-    return _collection
+    final ownQuery = _collection
         .where('isDeleted', isEqualTo: false)
         .where('isRead', isEqualTo: false)
-        .where(
-          Filter.or(
-            Filter('userId', isEqualTo: userId),
-            Filter('targetRole', whereIn: [role, 'all']),
-          ),
-        )
-        .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .where('userId', isEqualTo: userId);
+    final roleQuery = _collection
+        .where('isDeleted', isEqualTo: false)
+        .where('isRead', isEqualTo: false)
+        .where('targetRole', whereIn: [role, 'all']);
+
+    return _watchCombined(ownQuery, roleQuery).map((docs) => docs.length);
   }
 
   Stream<List<AppNotification>> watchNotifications({
@@ -47,25 +45,25 @@ class NotificationService {
     requireTrimmed(userId, 'userId');
     requireTrimmed(role, 'role');
 
-    Query<Map<String, dynamic>> query = _collection
+    Query<Map<String, dynamic>> ownQuery = _collection
         .where('isDeleted', isEqualTo: false)
-        .where(
-          Filter.or(
-            Filter('userId', isEqualTo: userId),
-            Filter('targetRole', whereIn: [role, 'all']),
-          ),
-        );
+        .where('userId', isEqualTo: userId);
+    Query<Map<String, dynamic>> roleQuery = _collection
+        .where('isDeleted', isEqualTo: false)
+        .where('targetRole', whereIn: [role, 'all']);
     if (type != null && type.trim().isNotEmpty) {
-      query = query.where('type', isEqualTo: type.trim());
+      ownQuery = ownQuery.where('type', isEqualTo: type.trim());
+      roleQuery = roleQuery.where('type', isEqualTo: type.trim());
     }
 
-    return query
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(AppNotification.fromDocument).toList(),
-        );
+    return _watchCombined(
+      ownQuery.orderBy('createdAt', descending: true),
+      roleQuery.orderBy('createdAt', descending: true),
+    ).map((docs) {
+      final notifications = docs.map(AppNotification.fromDocument).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return notifications;
+    });
   }
 
   Future<void> markAsRead(String id) {
@@ -80,21 +78,27 @@ class NotificationService {
     required String userId,
     required String role,
   }) async {
-    final snapshot = await _collection
+    final ownSnapshot = await _collection
         .where('isDeleted', isEqualTo: false)
         .where('isRead', isEqualTo: false)
-        .where(
-          Filter.or(
-            Filter('userId', isEqualTo: userId),
-            Filter('targetRole', whereIn: [role, 'all']),
-          ),
-        )
+        .where('userId', isEqualTo: userId)
+        .limit(50)
+        .get();
+    final roleSnapshot = await _collection
+        .where('isDeleted', isEqualTo: false)
+        .where('isRead', isEqualTo: false)
+        .where('targetRole', whereIn: [role, 'all'])
         .limit(50)
         .get();
 
-    if (snapshot.docs.isEmpty) return;
+    final documents = {
+      for (final document in ownSnapshot.docs) document.id: document,
+      for (final document in roleSnapshot.docs) document.id: document,
+    }.values;
+
+    if (documents.isEmpty) return;
     final batch = _firestore.batch();
-    for (final document in snapshot.docs) {
+    for (final document in documents) {
       batch.update(document.reference, {
         'isRead': true,
         'readAt': FieldValue.serverTimestamp(),
@@ -169,11 +173,7 @@ class NotificationService {
     requireTrimmed(name, 'name');
 
     final id = 'low_stock_${userId}_$itemId';
-    final reference = _collection.doc(id);
-    final existing = await reference.get();
-    if (existing.exists && existing.data()?['isRead'] != true) return;
-
-    await reference.set({
+    await _collection.doc(id).set({
       'id': id,
       'title': 'Stok $name rendah',
       'body':
@@ -200,12 +200,7 @@ class NotificationService {
     requireTrimmed(role, 'role');
 
     final id = 'schedule_overdue_${userId}_$scheduleId';
-    final reference = _collection.doc(id);
-    final existing = await reference.get();
-    // Guard: skip write if an unread alert already exists
-    if (existing.exists && existing.data()?['isRead'] != true) return;
-
-    await reference.set({
+    await _collection.doc(id).set({
       'id': id,
       'title': 'Jadwal overdue',
       'body': 'Jadwal $title sudah melewati waktu dan masih pending.',
@@ -257,3 +252,48 @@ class NotificationService {
 String _number(double value) => value == value.roundToDouble()
     ? value.toStringAsFixed(0)
     : value.toStringAsFixed(1);
+
+Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _watchCombined(
+  Query<Map<String, dynamic>> first,
+  Query<Map<String, dynamic>> second,
+) {
+  late final StreamController<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  controller;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? firstSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? secondSubscription;
+  QuerySnapshot<Map<String, dynamic>>? firstSnapshot;
+  QuerySnapshot<Map<String, dynamic>>? secondSnapshot;
+
+  void emit() {
+    final first = firstSnapshot;
+    final second = secondSnapshot;
+    if (first == null || second == null || controller.isClosed) return;
+
+    controller.add(
+      {
+        for (final document in first.docs) document.id: document,
+        for (final document in second.docs) document.id: document,
+      }.values.toList(),
+    );
+  }
+
+  controller =
+      StreamController<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+        onListen: () {
+          firstSubscription = first.snapshots().listen((snapshot) {
+            firstSnapshot = snapshot;
+            emit();
+          }, onError: controller.addError);
+          secondSubscription = second.snapshots().listen((snapshot) {
+            secondSnapshot = snapshot;
+            emit();
+          }, onError: controller.addError);
+        },
+        onCancel: () async {
+          await firstSubscription?.cancel();
+          await secondSubscription?.cancel();
+        },
+      );
+
+  return controller.stream;
+}
