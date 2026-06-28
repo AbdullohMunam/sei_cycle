@@ -1,20 +1,33 @@
-class DailyActivityPoint {
-  const DailyActivityPoint({required this.date, required this.total});
+import 'package:flutter/material.dart';
 
-  final DateTime date;
-  final int total;
-}
-
-class ModuleActivitySummary {
-  const ModuleActivitySummary({
-    required this.moduleType,
-    required this.label,
-    required this.total,
+class DashboardActivity {
+  const DashboardActivity({
+    required this.time,
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.done,
   });
 
-  final String moduleType;
+  final String time;
+  final String title;
+  final IconData icon;
+  final Color color;
+  final bool done;
+}
+
+class RevenueBreakdownItem {
+  const RevenueBreakdownItem({
+    required this.label,
+    required this.amount,
+    required this.portion,
+    required this.color,
+  });
+
   final String label;
-  final int total;
+  final double amount;
+  final double portion;
+  final Color color;
 }
 
 class LowStockDashboardItem {
@@ -33,66 +46,32 @@ class LowStockDashboardItem {
   final String unit;
 }
 
-class NutrientCycleNode {
-  const NutrientCycleNode({
-    required this.id,
-    required this.label,
-    required this.description,
-    this.moduleType,
-  });
-
-  final String id;
-  final String label;
-  final String description;
-  final String? moduleType;
-}
-
-class NutrientCycleEdge {
-  const NutrientCycleEdge({
-    required this.from,
-    required this.to,
-    required this.label,
-  });
-
-  final String from;
-  final String to;
-  final String label;
-}
-
 class DashboardSummary {
   const DashboardSummary({
-    required this.todayLogbooks,
-    required this.weeklyLogbooks,
-    required this.logbooksByModule,
-    required this.totalInventoryItems,
-    required this.lowStockItems,
+    required this.activeModuleCount,
+    required this.todayLogCount,
+    required this.todayScheduleCount,
+    required this.lowStockCount,
+    required this.monthlyIncome,
+    required this.monthlyExpense,
+    required this.monthlyProfit,
+    required this.recentActivities,
+    required this.revenueItems,
     required this.lowStockPreview,
-    required this.todaySchedules,
-    required this.pendingSchedules,
-    required this.overdueSchedules,
-    required this.totalIncome,
-    required this.totalExpense,
-    required this.activities,
-    required this.nutrientCycleNodes,
-    required this.nutrientCycleEdges,
     required this.financeVisible,
   });
 
-  final int todayLogbooks;
-  final int weeklyLogbooks;
-  final List<ModuleActivitySummary> logbooksByModule;
-  final int totalInventoryItems;
-  final int lowStockItems;
+  final int activeModuleCount;
+  final int todayLogCount;
+  final int todayScheduleCount;
+  final int lowStockCount;
+  final double monthlyIncome;
+  final double monthlyExpense;
+  final double monthlyProfit;
+  final List<DashboardActivity> recentActivities;
+  final List<RevenueBreakdownItem> revenueItems;
   final List<LowStockDashboardItem> lowStockPreview;
-  final int todaySchedules;
-  final int pendingSchedules;
-  final int overdueSchedules;
-  final double totalIncome;
-  final double totalExpense;
-  final List<DailyActivityPoint> activities;
-  final List<NutrientCycleNode> nutrientCycleNodes;
-  final List<NutrientCycleEdge> nutrientCycleEdges;
   final bool financeVisible;
 
-  double get profitLoss => totalIncome - totalExpense;
+  bool get hasFinanceData => monthlyIncome > 0 || monthlyExpense > 0;
 }

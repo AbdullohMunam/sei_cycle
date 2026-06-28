@@ -40,10 +40,64 @@ class LogbookService {
 
     return query
         .orderBy('activityDate', descending: true)
+        .limit(50)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs.map(LogbookEntry.fromDocument).toList(),
         );
+  }
+
+  Future<List<LogbookEntry>> getHistoryByModule(String moduleType) async {
+    requireOneOf(
+      moduleType,
+      FarmModules.values.map((module) => module.id).toSet(),
+      'moduleType',
+    );
+    final snapshot = await _collection
+        .where('isDeleted', isEqualTo: false)
+        .where('moduleType', isEqualTo: moduleType)
+        .orderBy('activityDate', descending: true)
+        .limit(20)
+        .get();
+    return snapshot.docs.map(LogbookEntry.fromDocument).toList();
+  }
+
+  Future<void> createDailyEntry({
+    required String moduleType,
+    required String title,
+    required String activityType,
+    required double? quantity,
+    required String? unit,
+    required String? notes,
+    required Map<String, dynamic> details,
+    required String userId,
+  }) async {
+    _validateEntry(
+      moduleType: moduleType,
+      title: title,
+      activityType: activityType,
+      userId: userId,
+    );
+
+    final documentId = _uuid.v4();
+    final now = FieldValue.serverTimestamp();
+    await _collection.doc(documentId).set({
+      'id': documentId,
+      'title': title.trim(),
+      'moduleType': moduleType,
+      'activityDate': Timestamp.fromDate(DateTime.now()),
+      'activityType': activityType.trim(),
+      'quantity': quantity,
+      'unit': unit?.trim(),
+      'status': 'completed',
+      'notes': notes?.trim() ?? '',
+      'details': details,
+      'createdBy': userId,
+      'updatedBy': userId,
+      'createdAt': now,
+      'updatedAt': now,
+      'isDeleted': false,
+    });
   }
 
   Future<void> save({
@@ -57,14 +111,14 @@ class LogbookService {
     required String note,
     required String userId,
   }) async {
-    _validateSave(
-      moduleId: moduleId,
+    _validateEntry(
+      moduleType: moduleId,
+      title: activityType,
       activityType: activityType,
-      quantity: quantity,
-      unit: unit,
-      condition: condition,
       userId: userId,
     );
+    requirePositive(quantity, 'quantity');
+    requireTrimmed(unit, 'unit');
 
     final documentId = id ?? _uuid.v4();
     final now = FieldValue.serverTimestamp();
@@ -73,10 +127,16 @@ class LogbookService {
       'title': activityType.trim(),
       'moduleType': moduleId,
       'activityDate': Timestamp.fromDate(activityDate),
+      'activityType': activityType.trim(),
       'quantity': quantity,
       'unit': unit.trim(),
-      'status': condition.trim(),
+      'status': condition.trim().isEmpty ? 'completed' : condition.trim(),
       'notes': note.trim(),
+      'details': <String, dynamic>{
+        'quantity': quantity,
+        'unit': unit.trim(),
+        'condition': condition.trim(),
+      },
       'updatedBy': userId,
       'updatedAt': now,
       'isDeleted': false,
@@ -98,23 +158,19 @@ class LogbookService {
     });
   }
 
-  void _validateSave({
-    required String moduleId,
+  void _validateEntry({
+    required String moduleType,
+    required String title,
     required String activityType,
-    required double quantity,
-    required String unit,
-    required String condition,
     required String userId,
   }) {
     requireOneOf(
-      moduleId,
+      moduleType,
       FarmModules.values.map((module) => module.id).toSet(),
       'moduleType',
     );
-    requireTrimmed(activityType, 'title');
-    requirePositive(quantity, 'quantity');
-    requireTrimmed(unit, 'unit');
-    requireTrimmed(condition, 'status');
+    requireTrimmed(title, 'title');
+    requireTrimmed(activityType, 'activityType');
     requireTrimmed(userId, 'userId');
   }
 }

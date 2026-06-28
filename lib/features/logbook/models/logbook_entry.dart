@@ -5,33 +5,42 @@ import '../../../core/utils/firestore_fields.dart';
 class LogbookEntry {
   const LogbookEntry({
     required this.id,
+    String? title,
     required this.moduleId,
     required this.activityType,
     required this.activityDate,
     required this.quantity,
     required this.unit,
-    required this.condition,
+    String? status,
+    String? condition,
     required this.note,
+    Map<String, dynamic>? details,
     required this.createdBy,
     required this.updatedBy,
     required this.createdAt,
     required this.updatedAt,
     required this.isDeleted,
-  });
+  }) : title = title ?? activityType,
+       status = status ?? condition ?? '',
+       details = details ?? const <String, dynamic>{};
 
   final String id;
+  final String title;
   final String moduleId;
   final String activityType;
   final DateTime activityDate;
   final double quantity;
   final String unit;
-  final String condition;
+  final String status;
   final String note;
+  final Map<String, dynamic> details;
   final String createdBy;
   final String updatedBy;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
+
+  String get condition => status;
 
   factory LogbookEntry.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
@@ -39,16 +48,18 @@ class LogbookEntry {
     final data = document.data() ?? const <String, dynamic>{};
     return LogbookEntry(
       id: stringField(data, const ['id'], fallback: document.id),
+      title: stringField(data, const ['title'], fallback: 'Catatan Logbook'),
       moduleId: stringField(data, const ['moduleType', 'module_id']),
-      activityType: stringField(data, const ['title', 'activity_type']),
+      activityType: stringField(data, const ['activityType', 'activity_type']),
       activityDate: dateTimeField(data, const [
         'activityDate',
         'activity_date',
       ]),
       quantity: doubleField(data, const ['quantity']),
       unit: stringField(data, const ['unit']),
-      condition: stringField(data, const ['status', 'condition']),
+      status: stringField(data, const ['status', 'condition']),
       note: stringField(data, const ['notes', 'note']),
+      details: _mapField(data, const ['details']),
       createdBy: stringField(data, const ['createdBy', 'created_by']),
       updatedBy: stringField(data, const ['updatedBy', 'updated_by']),
       createdAt: dateTimeField(data, const ['createdAt', 'created_at']),
@@ -60,13 +71,15 @@ class LogbookEntry {
   Map<String, dynamic> toFirestore() {
     return {
       'id': id,
-      'title': activityType,
+      'title': title,
       'moduleType': moduleId,
       'activityDate': Timestamp.fromDate(activityDate),
+      'activityType': activityType,
       'quantity': quantity,
       'unit': unit,
-      'status': condition,
+      'status': status,
       'notes': note,
+      'details': details,
       'createdBy': createdBy,
       'updatedBy': updatedBy,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -74,4 +87,11 @@ class LogbookEntry {
       'isDeleted': isDeleted,
     };
   }
+}
+
+Map<String, dynamic> _mapField(Map<String, dynamic> data, List<String> keys) {
+  final value = fieldValue(data, keys);
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return const <String, dynamic>{};
 }
