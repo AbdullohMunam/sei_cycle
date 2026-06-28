@@ -5,6 +5,7 @@ import '../../../core/utils/excel_generator.dart';
 import '../../../core/utils/pdf_generator.dart';
 import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/async_state_widgets.dart';
+import '../../../core/widgets/feature_page.dart';
 import '../../../theme/app_theme.dart';
 import '../../profile/models/app_user.dart';
 import '../models/analytics_model.dart';
@@ -29,13 +30,13 @@ class _ReportScreenState extends State<ReportScreen> {
   void initState() {
     super.initState();
     _service = ReportService();
-    
+
     // Default filter: last 30 days, full summary
     final now = DateTime.now();
     _filter = ReportFilter(
       startDate: now.subtract(const Duration(days: 30)),
       endDate: now,
-      reportType: ReportType.full_summary,
+      reportType: ReportType.fullSummary,
     );
     _load();
   }
@@ -51,9 +52,9 @@ class _ReportScreenState extends State<ReportScreen> {
       await PdfGenerator.generateAndSharePdf(data);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengekspor PDF: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal mengekspor PDF: $e')));
       }
     }
   }
@@ -63,49 +64,58 @@ class _ReportScreenState extends State<ReportScreen> {
       await ExcelGenerator.generateAndShareExcel(data);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengekspor Excel: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal mengekspor Excel: $e')));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildFilters(),
-        Expanded(
-          child: FutureBuilder<AnalyticsModel>(
-            future: _dataFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const LoadingState(label: 'Memuat data laporan...');
-              }
-              if (snapshot.hasError) {
-                return ErrorState(
-                  message: 'Gagal memuat laporan: ${snapshot.error}',
-                  onRetry: _load,
-                );
-              }
-              
-              final data = snapshot.requireData;
-              return _buildContent(data);
-            },
-          ),
+    return FeaturePage(
+      title: 'Laporan',
+      subtitle: 'Rekap operasional, inventaris, dan keuangan Kebun Sei.',
+      actions: [
+        OutlinedButton.icon(
+          onPressed: _load,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Refresh'),
         ),
       ],
+      child: Column(
+        children: [
+          _buildFilters(),
+          const SizedBox(height: 14),
+          Expanded(
+            child: FutureBuilder<AnalyticsModel>(
+              future: _dataFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const LoadingState(label: 'Memuat data laporan...');
+                }
+                if (snapshot.hasError) {
+                  return ErrorState(
+                    message: 'Gagal memuat laporan: ${snapshot.error}',
+                    onRetry: _load,
+                  );
+                }
+
+                final data = snapshot.requireData;
+                return _buildContent(data);
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildFilters() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: AppColors.surface,
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: ResponsiveFormRow(
+        breakpoint: 680,
         children: [
           _DateRangePicker(
             startDate: _filter.startDate,
@@ -115,14 +125,19 @@ class _ReportScreenState extends State<ReportScreen> {
               _load();
             },
           ),
-          DropdownButton<ReportType>(
-            value: _filter.reportType,
-            items: ReportType.values.map((type) {
-              return DropdownMenuItem(
-                value: type,
-                child: Text(type.name.replaceAll('_', ' ').toUpperCase()),
-              );
-            }).toList(),
+          DropdownButtonFormField<ReportType>(
+            initialValue: _filter.reportType,
+            decoration: const InputDecoration(
+              labelText: 'Jenis laporan',
+              prefixIcon: Icon(Icons.tune_rounded),
+            ),
+            items: [
+              for (final type in ReportType.values)
+                DropdownMenuItem(
+                  value: type,
+                  child: Text(_reportTypeLabel(type)),
+                ),
+            ],
             onChanged: (val) {
               if (val != null) {
                 _filter = _filter.copyWith(reportType: val);
@@ -136,73 +151,183 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildContent(AnalyticsModel data) {
-    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       children: [
-        Row(
+        ResponsiveFormRow(
+          breakpoint: 520,
           children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => _exportPdf(data),
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Export PDF'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white),
-              ),
+            FilledButton.icon(
+              onPressed: () => _exportPdf(data),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Export PDF'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => _exportExcel(data),
-                icon: const Icon(Icons.table_chart),
-                label: const Text('Export Excel'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700, foregroundColor: Colors.white),
-              ),
+            FilledButton.icon(
+              onPressed: () => _exportExcel(data),
+              icon: const Icon(Icons.table_chart_outlined),
+              label: const Text('Export Excel'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.success),
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Ringkasan', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 16),
-              ListTile(
-                title: const Text('Total Aktivitas Logbook'),
-                trailing: Text('${data.logbooks.length}'),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 860
+                ? 3
+                : constraints.maxWidth >= 560
+                ? 2
+                : 1;
+            const spacing = 12.0;
+            final width =
+                (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
+            final metrics = [
+              _ReportMetric(
+                label: 'Aktivitas logbook',
+                value: '${data.logbooks.length}',
+                helper: 'Catatan pada rentang laporan',
+                icon: Icons.menu_book_outlined,
+                color: AppColors.primaryGreen,
               ),
-              ListTile(
-                title: const Text('Item Stok Rendah'),
-                trailing: Text('${data.lowStockItems.length}'),
-                textColor: data.lowStockItems.isNotEmpty ? Colors.red : null,
+              _ReportMetric(
+                label: 'Item stok rendah',
+                value: '${data.lowStockItems.length}',
+                helper: data.lowStockItems.isEmpty
+                    ? 'Tidak ada stok kritis'
+                    : 'Perlu ditindaklanjuti',
+                icon: data.lowStockItems.isEmpty
+                    ? Icons.check_circle_outline
+                    : Icons.warning_amber_rounded,
+                color: data.lowStockItems.isEmpty
+                    ? AppColors.success
+                    : AppColors.warning,
               ),
-              if (_filter.reportType == ReportType.full_summary || _filter.reportType == ReportType.finance) ...[
-                ListTile(
-                  title: const Text('Total Pemasukan'),
-                  trailing: Text(currencyFormat.format(data.totalIncome), style: const TextStyle(color: Colors.green)),
+              if (_filter.reportType == ReportType.fullSummary ||
+                  _filter.reportType == ReportType.finance)
+                _ReportMetric(
+                  label: 'Total pemasukan',
+                  value: currencyFormat.format(data.totalIncome),
+                  helper: 'Akumulasi transaksi income',
+                  icon: Icons.south_west_rounded,
+                  color: AppColors.success,
                 ),
-                ListTile(
-                  title: const Text('Total Pengeluaran'),
-                  trailing: Text(currencyFormat.format(data.totalExpense), style: const TextStyle(color: Colors.red)),
+              if (_filter.reportType == ReportType.fullSummary ||
+                  _filter.reportType == ReportType.finance)
+                _ReportMetric(
+                  label: 'Total pengeluaran',
+                  value: currencyFormat.format(data.totalExpense),
+                  helper: 'Akumulasi transaksi expense',
+                  icon: Icons.north_east_rounded,
+                  color: AppColors.error,
                 ),
-                ListTile(
-                  title: const Text('Laba Bersih'),
-                  trailing: Text(
-                    currencyFormat.format(data.profitLoss),
-                    style: TextStyle(
-                      color: data.profitLoss >= 0 ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold,
+              if (_filter.reportType == ReportType.fullSummary ||
+                  _filter.reportType == ReportType.finance)
+                _ReportMetric(
+                  label: 'Laba bersih',
+                  value: currencyFormat.format(data.profitLoss),
+                  helper: data.profitLoss >= 0
+                      ? 'Arus kas positif'
+                      : 'Pengeluaran lebih besar',
+                  icon: Icons.account_balance_wallet_outlined,
+                  color: data.profitLoss >= 0
+                      ? AppColors.primaryGreen
+                      : AppColors.warning,
+                ),
+            ];
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                for (final metric in metrics)
+                  SizedBox(width: width, child: _ReportMetricCard(metric)),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        InlineMessage(
+          icon: Icons.info_outline,
+          color: AppColors.info,
+          message:
+              'Periode laporan: ${_formatDate(_filter.startDate)} sampai ${_formatDate(_filter.endDate)}.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportMetric {
+  const _ReportMetric({
+    required this.label,
+    required this.value,
+    required this.helper,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final String helper;
+  final IconData icon;
+  final Color color;
+}
+
+class _ReportMetricCard extends StatelessWidget {
+  const _ReportMetricCard(this.metric);
+
+  final _ReportMetric metric;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIconBox(icon: metric.icon, color: metric.color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  metric.label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    metric.value,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: metric.color,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  metric.helper,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
+                ),
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -238,3 +363,12 @@ class _DateRangePicker extends StatelessWidget {
     );
   }
 }
+
+String _reportTypeLabel(ReportType type) => switch (type) {
+  ReportType.operational => 'Operasional',
+  ReportType.finance => 'Keuangan',
+  ReportType.inventory => 'Inventaris',
+  ReportType.fullSummary => 'Ringkasan lengkap',
+};
+
+String _formatDate(DateTime date) => DateFormat('dd MMM yyyy').format(date);

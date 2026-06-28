@@ -22,7 +22,11 @@ class PdfGenerator {
     }
 
     final dateFormat = DateFormat('dd MMM yyyy');
-    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -52,20 +56,31 @@ class PdfGenerator {
 
     // Save and Share
     final output = await getTemporaryDirectory();
-    final file = File('${output.path}/Laporan_SeiCycle_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    final file = File(
+      '${output.path}/Laporan_SeiCycle_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
     await file.writeAsBytes(await pdf.save());
 
-    await Share.shareXFiles([XFile(file.path)], text: 'Laporan SeiCycle');
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(file.path)], text: 'Laporan SeiCycle'),
+    );
   }
 
-  static pw.Widget _buildHeader(pw.MemoryImage? logo, AnalyticsModel data, DateFormat dateFormat) {
+  static pw.Widget _buildHeader(
+    pw.MemoryImage? logo,
+    AnalyticsModel data,
+    DateFormat dateFormat,
+  ) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text('LAPORAN ANALITIK SEICYCLE', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.Text(
+              'LAPORAN ANALITIK SEICYCLE',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
             pw.SizedBox(height: 4),
             pw.Text(
               'Periode: ${dateFormat.format(data.startDate)} - ${dateFormat.format(data.endDate)}',
@@ -73,12 +88,16 @@ class PdfGenerator {
             ),
           ],
         ),
-        if (logo != null) pw.Container(width: 50, height: 50, child: pw.Image(logo)),
+        if (logo != null)
+          pw.Container(width: 50, height: 50, child: pw.Image(logo)),
       ],
     );
   }
 
-  static pw.Widget _buildSummary(AnalyticsModel data, NumberFormat currencyFormat) {
+  static pw.Widget _buildSummary(
+    AnalyticsModel data,
+    NumberFormat currencyFormat,
+  ) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
@@ -88,19 +107,29 @@ class PdfGenerator {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('Ringkasan', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Ringkasan',
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
           pw.Text('Total Aktivitas: ${data.logbooks.length} catatan'),
           pw.Text('Item Stok Rendah: ${data.lowStockItems.length} item'),
-          pw.Text('Total Pemasukan: ${currencyFormat.format(data.totalIncome)}'),
-          pw.Text('Total Pengeluaran: ${currencyFormat.format(data.totalExpense)}'),
+          pw.Text(
+            'Total Pemasukan: ${currencyFormat.format(data.totalIncome)}',
+          ),
+          pw.Text(
+            'Total Pengeluaran: ${currencyFormat.format(data.totalExpense)}',
+          ),
           pw.Text('Laba Bersih: ${currencyFormat.format(data.profitLoss)}'),
         ],
       ),
     );
   }
 
-  static pw.Widget _buildLogbooksTable(AnalyticsModel data, DateFormat dateFormat) {
+  static pw.Widget _buildLogbooksTable(
+    AnalyticsModel data,
+    DateFormat dateFormat,
+  ) {
     if (data.logbooks.isEmpty) {
       return pw.Text('Tidak ada catatan operasional pada periode ini.');
     }
@@ -118,13 +147,19 @@ class PdfGenerator {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text('Data Operasional', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(
+          'Data Operasional',
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+        ),
         pw.SizedBox(height: 8),
         pw.TableHelper.fromTextArray(
           headers: headers,
           data: rows,
           border: pw.TableBorder.all(color: PdfColors.grey300),
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+          headerStyle: pw.TextStyle(
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.white,
+          ),
           headerDecoration: const pw.BoxDecoration(color: PdfColors.green700),
           cellPadding: const pw.EdgeInsets.all(6),
         ),

@@ -10,7 +10,11 @@ class ExcelGenerator {
   static Future<void> generateAndShareExcel(AnalyticsModel data) async {
     final excel = Excel.createExcel();
     final dateFormat = DateFormat('yyyy-MM-dd');
-    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
 
     _buildSummarySheet(excel, data, dateFormat, currencyFormat);
     _buildLogbooksSheet(excel, data, dateFormat);
@@ -19,33 +23,65 @@ class ExcelGenerator {
 
     // Save and Share
     final output = await getTemporaryDirectory();
-    final file = File('${output.path}/Laporan_SeiCycle_${DateTime.now().millisecondsSinceEpoch}.xlsx');
-    
+    final file = File(
+      '${output.path}/Laporan_SeiCycle_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+    );
+
     final bytes = excel.encode();
     if (bytes != null) {
       await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)], text: 'Laporan Excel SeiCycle');
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], text: 'Laporan Excel SeiCycle'),
+      );
     }
   }
 
-  static void _buildSummarySheet(Excel excel, AnalyticsModel data, DateFormat dateFormat, NumberFormat currencyFormat) {
+  static void _buildSummarySheet(
+    Excel excel,
+    AnalyticsModel data,
+    DateFormat dateFormat,
+    NumberFormat currencyFormat,
+  ) {
     final sheet = excel['Summary'];
     excel.setDefaultSheet('Summary');
 
     sheet.appendRow([TextCellValue('LAPORAN SEICYCLE')]);
-    sheet.appendRow([TextCellValue('Periode: ${dateFormat.format(data.startDate)} - ${dateFormat.format(data.endDate)}')]);
+    sheet.appendRow([
+      TextCellValue(
+        'Periode: ${dateFormat.format(data.startDate)} - ${dateFormat.format(data.endDate)}',
+      ),
+    ]);
     sheet.appendRow([TextCellValue('')]);
-    
-    sheet.appendRow([TextCellValue('Total Aktivitas'), IntCellValue(data.logbooks.length)]);
-    sheet.appendRow([TextCellValue('Item Stok Rendah'), IntCellValue(data.lowStockItems.length)]);
-    sheet.appendRow([TextCellValue('Total Pemasukan'), TextCellValue(currencyFormat.format(data.totalIncome))]);
-    sheet.appendRow([TextCellValue('Total Pengeluaran'), TextCellValue(currencyFormat.format(data.totalExpense))]);
-    sheet.appendRow([TextCellValue('Laba Bersih'), TextCellValue(currencyFormat.format(data.profitLoss))]);
+
+    sheet.appendRow([
+      TextCellValue('Total Aktivitas'),
+      IntCellValue(data.logbooks.length),
+    ]);
+    sheet.appendRow([
+      TextCellValue('Item Stok Rendah'),
+      IntCellValue(data.lowStockItems.length),
+    ]);
+    sheet.appendRow([
+      TextCellValue('Total Pemasukan'),
+      TextCellValue(currencyFormat.format(data.totalIncome)),
+    ]);
+    sheet.appendRow([
+      TextCellValue('Total Pengeluaran'),
+      TextCellValue(currencyFormat.format(data.totalExpense)),
+    ]);
+    sheet.appendRow([
+      TextCellValue('Laba Bersih'),
+      TextCellValue(currencyFormat.format(data.profitLoss)),
+    ]);
   }
 
-  static void _buildLogbooksSheet(Excel excel, AnalyticsModel data, DateFormat dateFormat) {
+  static void _buildLogbooksSheet(
+    Excel excel,
+    AnalyticsModel data,
+    DateFormat dateFormat,
+  ) {
     if (data.logbooks.isEmpty) return;
-    
+
     final sheet = excel['Operasional'];
     sheet.appendRow([
       TextCellValue('Tanggal'),
@@ -91,7 +127,11 @@ class ExcelGenerator {
     }
   }
 
-  static void _buildFinanceSheet(Excel excel, AnalyticsModel data, DateFormat dateFormat) {
+  static void _buildFinanceSheet(
+    Excel excel,
+    AnalyticsModel data,
+    DateFormat dateFormat,
+  ) {
     if (data.financeRecords.isEmpty) return;
 
     final sheet = excel['Keuangan'];

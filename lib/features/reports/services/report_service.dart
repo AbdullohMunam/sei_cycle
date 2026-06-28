@@ -18,7 +18,8 @@ class ReportService {
     List<FinanceRecord> financeRecords = [];
 
     // Fetch Logbooks
-    if (filter.reportType == ReportType.full_summary || filter.reportType == ReportType.operational) {
+    if (filter.reportType == ReportType.fullSummary ||
+        filter.reportType == ReportType.operational) {
       Query<Map<String, dynamic>> logbookQuery = _firestore
           .collection('logbooks')
           .where('isDeleted', isEqualTo: false)
@@ -26,31 +27,42 @@ class ReportService {
           .where('activityDate', isLessThanOrEqualTo: endDate);
 
       if (filter.moduleType != null && filter.moduleType!.isNotEmpty) {
-        logbookQuery = logbookQuery.where('moduleType', isEqualTo: filter.moduleType);
+        logbookQuery = logbookQuery.where(
+          'moduleType',
+          isEqualTo: filter.moduleType,
+        );
       }
 
       final logbookSnapshot = await logbookQuery.get();
-      logbooks = logbookSnapshot.docs.map((doc) => LogbookEntry.fromDocument(doc)).toList();
+      logbooks = logbookSnapshot.docs
+          .map((doc) => LogbookEntry.fromDocument(doc))
+          .toList();
     }
 
     // Fetch Inventory
-    if (filter.reportType == ReportType.full_summary || filter.reportType == ReportType.inventory) {
+    if (filter.reportType == ReportType.fullSummary ||
+        filter.reportType == ReportType.inventory) {
       final inventorySnapshot = await _firestore
           .collection('inventory')
           .where('isDeleted', isEqualTo: false)
           .get();
-      inventoryItems = inventorySnapshot.docs.map((doc) => InventoryItem.fromDocument(doc)).toList();
+      inventoryItems = inventorySnapshot.docs
+          .map((doc) => InventoryItem.fromDocument(doc))
+          .toList();
     }
 
     // Fetch Finance
-    if (filter.reportType == ReportType.full_summary || filter.reportType == ReportType.finance) {
+    if (filter.reportType == ReportType.fullSummary ||
+        filter.reportType == ReportType.finance) {
       final financeSnapshot = await _firestore
           .collection('finance_transactions')
           .where('isDeleted', isEqualTo: false)
           .where('date', isGreaterThanOrEqualTo: startDate)
           .where('date', isLessThanOrEqualTo: endDate)
           .get();
-      financeRecords = financeSnapshot.docs.map((doc) => FinanceRecord.fromDocument(doc)).toList();
+      financeRecords = financeSnapshot.docs
+          .map((doc) => FinanceRecord.fromDocument(doc))
+          .toList();
     }
 
     return AnalyticsModel(

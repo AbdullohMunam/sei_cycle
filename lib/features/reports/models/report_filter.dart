@@ -1,11 +1,11 @@
-enum ReportType { operational, finance, inventory, full_summary }
+enum ReportType { operational, finance, inventory, fullSummary }
 
 class ReportFilter {
   ReportFilter({
     required this.startDate,
     required this.endDate,
     this.moduleType,
-    this.reportType = ReportType.full_summary,
+    this.reportType = ReportType.fullSummary,
   });
 
   DateTime startDate;
