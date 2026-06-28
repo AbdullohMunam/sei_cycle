@@ -42,6 +42,7 @@ Checklist final brief tersedia di
 - Edukasi artikel/video/SOP dengan teks atau URL eksternal, dikelola admin.
 - Keuangan pemasukan, pengeluaran, total, dan laba/rugi sederhana; hapus transaksi khusus admin.
 - Seed lima dokumen `farm_modules` dari menu Profil admin.
+- Seed data sampel demo Firestore dari menu Profil admin.
 - Firestore Security Rules berbasis autentikasi dan role.
 - Notifikasi free-mode: inbox Firestore, local reminder client-side, dan ID
   deterministik untuk alert stok rendah/jadwal overdue agar tidak spam duplicate.
@@ -63,6 +64,7 @@ Checklist final brief tersedia di
 - [x] Edukasi artikel/video/SOP berbasis teks dan URL eksternal, dengan hapus admin.
 - [x] Keuangan admin/operator keuangan untuk income, expense, total, laba/rugi sederhana, dan hapus admin.
 - [x] Seed `farm_modules` dari UI Profil admin, bukan seeder Node.js.
+- [x] Seed data sampel demo dari UI Profil admin, bukan seeder Node.js.
 - [x] Firestore schema, ERD, rules, dan konfigurasi deploy rules.
 - [x] FCM client readiness untuk request permission dan ambil token.
 - [x] Secret hygiene untuk `.env`, service account, key, dan `node_modules/`.
@@ -175,6 +177,7 @@ Rules. Tidak ada script seeder Node.js atau Firebase Admin SDK.
 | `recommendations` | UUID | Snapshot rekomendasi opsional |
 
 Detail field tersedia di [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md).
+Panduan data sampel demo tersedia di [docs/SAMPLE_DATA.md](docs/SAMPLE_DATA.md).
 
 ## Role dan Akses
 

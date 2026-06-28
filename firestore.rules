@@ -130,7 +130,9 @@ service cloud.firestore {
           'updatedAt',
           'createdBy',
           'updatedBy',
-          'isDeleted'
+          'isDeleted',
+          'isSampleData',
+          'sampleVersion'
         ])
         && data.id == documentId
         && data.type in ['income', 'expense']
@@ -144,6 +146,8 @@ service cloud.firestore {
         && data.createdBy is string
         && data.updatedBy is string
         && data.isDeleted is bool
+        && (!('isSampleData' in data.keys()) || data.isSampleData is bool)
+        && (!('sampleVersion' in data.keys()) || data.sampleVersion is string)
         && (!('description' in data.keys()) || data.description is string)
         && (!('notes' in data.keys()) || data.notes is string)
         && (!('paymentMethod' in data.keys()) || data.paymentMethod is string)
@@ -199,8 +203,13 @@ service cloud.firestore {
           'isRead',
           'readAt',
           'createdAt',
+          'updatedAt',
+          'createdBy',
+          'updatedBy',
           'scheduledAt',
-          'isDeleted'
+          'isDeleted',
+          'isSampleData',
+          'sampleVersion'
         ])
         && data.id == documentId
         && data.title is string
@@ -221,6 +230,11 @@ service cloud.firestore {
         && data.createdAt is timestamp
         && data.isDeleted is bool
         && data.isDeleted == false
+        && (!('updatedAt' in data.keys()) || data.updatedAt is timestamp)
+        && (!('createdBy' in data.keys()) || data.createdBy is string)
+        && (!('updatedBy' in data.keys()) || data.updatedBy is string)
+        && (!('isSampleData' in data.keys()) || data.isSampleData is bool)
+        && (!('sampleVersion' in data.keys()) || data.sampleVersion is string)
         && (!('relatedCollection' in data.keys()) || data.relatedCollection is string)
         && (!('relatedId' in data.keys()) || data.relatedId is string)
         && (!('scheduledAt' in data.keys()) || data.scheduledAt is timestamp);

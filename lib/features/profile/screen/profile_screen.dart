@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/local_reminder_service.dart';
 import '../../../core/services/messaging_service.dart';
+import '../../../core/dev/sample_data_service.dart';
 import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/feature_page.dart';
 import '../../../theme/app_theme.dart';
@@ -153,6 +154,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'Lima modul kebun berhasil disiapkan.',
                       ),
                 child: const Text('Siapkan modul'),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _SettingsCard(
+              icon: Icons.science_outlined,
+              title: 'Data sampel demo',
+              subtitle:
+                  'Isi Firestore dengan data sampel kecil untuk demo dan testing.',
+              action: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _run(
+                            SampleDataService().seedSampleData,
+                            'Data sampel berhasil disiapkan.',
+                          ),
+                    icon: const Icon(Icons.auto_fix_high_outlined),
+                    label: const Text('Seed sampel'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _run(
+                            SampleDataService().clearSampleData,
+                            'Data sampel berhasil dihapus.',
+                          ),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Hapus sampel'),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 14),
