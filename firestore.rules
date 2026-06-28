@@ -68,6 +68,10 @@ service cloud.firestore {
       return hasRole('operator_keuangan');
     }
 
+    function isRoleTarget(role) {
+      return role == 'all' || supportedRole(role);
+    }
+
     function canManageOperations() {
       return isAdmin() || isOperatorLapangan();
     }
@@ -159,6 +163,10 @@ service cloud.firestore {
         ]);
     }
 
+    function isPublishedEducation(data) {
+      return data.isDeleted == false && data.status == 'published';
+    }
+
     function canReadNotification(data) {
       return activeUser() && (
         isAdmin()
@@ -166,6 +174,78 @@ service cloud.firestore {
         || data.targetRole == 'all'
         || data.targetRole == profileRole()
       );
+    }
+
+    function validNotificationBase(documentId, data) {
+      return data.keys().hasOnly([
+          'id',
+          'title',
+          'body',
+          'type',
+          'targetRole',
+          'userId',
+          'relatedCollection',
+          'relatedId',
+          'isRead',
+          'readAt',
+          'createdAt',
+          'scheduledAt',
+          'isDeleted'
+        ])
+        && data.id == documentId
+        && data.title is string
+        && data.title.size() > 0
+        && data.body is string
+        && data.body.size() > 0
+        && data.type in [
+          'low_stock',
+          'schedule_overdue',
+          'production_reminder',
+          'system'
+        ]
+        && data.targetRole is string
+        && isRoleTarget(data.targetRole)
+        && data.userId is string
+        && data.isRead is bool
+        && data.isRead == false
+        && data.createdAt is timestamp
+        && data.isDeleted is bool
+        && data.isDeleted == false
+        && (!('relatedCollection' in data.keys()) || data.relatedCollection is string)
+        && (!('relatedId' in data.keys()) || data.relatedId is string)
+        && (!('scheduledAt' in data.keys()) || data.scheduledAt is timestamp);
+    }
+
+    function userCanCreateOwnNotification(documentId) {
+      return activeUser()
+        && validNotificationBase(documentId, request.resource.data)
+        && request.resource.data.type in [
+          'low_stock',
+          'schedule_overdue',
+          'production_reminder'
+        ]
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.targetRole == profileRole();
+    }
+
+    function userCanRefreshOwnNotification() {
+      return activeUser()
+        && validNotificationBase(resource.data.id, request.resource.data)
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.targetRole == profileRole()
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.type in [
+          'low_stock',
+          'schedule_overdue',
+          'production_reminder'
+        ];
+    }
+
+    function adminCanCreateSystemNotification(documentId) {
+      return isAdmin()
+        && validNotificationBase(documentId, request.resource.data)
+        && request.resource.data.type == 'system';
     }
 
     /*
@@ -293,11 +373,13 @@ service cloud.firestore {
 
     /*
       EDUKASI
-      Semua user aktif bisa lihat.
-      Hanya admin yang boleh tambah/edit/hapus.
+      Semua user aktif bisa lihat konten published.
+      Hanya admin yang bisa lihat dan kelola semua status.
     */
     match /education_contents/{contentId} {
-      allow read: if activeUser();
+      allow read: if activeUser() && (
+        isAdmin() || isPublishedEducation(resource.data)
+      );
 
       allow create: if isAdmin();
       allow update: if isAdmin();
@@ -336,17 +418,18 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if canReadNotification(resource.data);
 
-      allow create: if activeUser()
-        && request.resource.data.id == notificationId
-        && request.resource.data.isDeleted == false
-        && canReadNotification(request.resource.data);
+      allow create: if userCanCreateOwnNotification(notificationId)
+        || adminCanCreateSystemNotification(notificationId);
 
       allow update: if canReadNotification(resource.data)
         && request.resource.data.id == resource.data.id
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'isRead',
-          'readAt'
-        ]);
+        && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'isRead',
+            'readAt'
+          ])
+          || userCanRefreshOwnNotification()
+        );
 
       allow delete: if isAdmin();
     }

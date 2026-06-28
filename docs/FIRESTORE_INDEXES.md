@@ -7,7 +7,9 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | Collection | Query | Field index yang disarankan |
 | --- | --- | --- |
 | `logbooks` | daftar semua logbook aktif terbaru | `isDeleted ASC`, `activityDate DESC` |
+| `logbooks` | dashboard/report rentang tanggal | `isDeleted ASC`, `activityDate ASC` |
 | `logbooks` | filter moduleType + logbook aktif terbaru | `isDeleted ASC`, `moduleType ASC`, `activityDate DESC` |
+| `logbooks` | filter moduleType + report rentang tanggal | `isDeleted ASC`, `moduleType ASC`, `activityDate ASC` |
 | `logbooks` | filter tanggal + logbook aktif terbaru | `isDeleted ASC`, `activityDate DESC` |
 | `logbooks` | filter moduleType + tanggal + logbook aktif terbaru | `isDeleted ASC`, `moduleType ASC`, `activityDate DESC` |
 | `logbooks` | AI recommendation logbook 45 hari terakhir | `isDeleted ASC`, `activityDate DESC` |
@@ -18,8 +20,15 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `schedules` | dashboard jadwal overdue | `isDeleted ASC`, `status ASC`, `date ASC` |
 | `schedules` | AI recommendation jadwal overdue | `isDeleted ASC`, `status ASC`, `date ASC` |
 | `education_contents` | konten aktif terbaru untuk admin | `isDeleted ASC`, `updatedAt DESC` |
-| `education_contents` | konten published aktif terbaru untuk user | `isDeleted ASC`, `isPublished ASC`, `updatedAt DESC` |
+| `education_contents` | konten status tertentu terbaru | `isDeleted ASC`, `status ASC`, `updatedAt DESC` |
+| `education_contents` | filter type untuk admin | `isDeleted ASC`, `type ASC`, `updatedAt DESC` |
+| `education_contents` | filter moduleType untuk admin | `isDeleted ASC`, `moduleType ASC`, `updatedAt DESC` |
+| `education_contents` | konten published + type terbaru | `isDeleted ASC`, `status ASC`, `type ASC`, `updatedAt DESC` |
+| `education_contents` | konten published + moduleType terbaru | `isDeleted ASC`, `status ASC`, `moduleType ASC`, `updatedAt DESC` |
+| `education_contents` | filter type + moduleType untuk admin | `isDeleted ASC`, `type ASC`, `moduleType ASC`, `updatedAt DESC` |
+| `education_contents` | konten published + type + moduleType terbaru | `isDeleted ASC`, `status ASC`, `type ASC`, `moduleType ASC`, `updatedAt DESC` |
 | `finance_transactions` | transaksi aktif terbaru | `isDeleted ASC`, `date DESC` |
+| `finance_transactions` | report rentang tanggal | `isDeleted ASC`, `date ASC` |
 | `finance_transactions` | AI recommendation finance bulan berjalan | `isDeleted ASC`, `date DESC` |
 | `farm_modules` | modul aktif urut nama | `isActive ASC`, `name ASC` |
 | `users` | daftar user urut nama | `name ASC` |
@@ -42,4 +51,5 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 - Equality filter seperti `where('isDeleted', isEqualTo: false)` sering tetap perlu composite index ketika digabung dengan `orderBy` field lain.
 - Untuk range tanggal, Firestore mengharuskan field range menjadi urutan pertama yang relevan pada `orderBy`; service sudah memakai `activityDate` dan `date` sesuai query.
 - Query notifikasi memakai OR untuk personal dan role/global. Jika Firebase Console meminta index tambahan, buat dari link error dan update file ini.
+- File deployable index berada di `firestore.indexes.json` dan sudah direferensikan oleh `firebase.json`.
 - Jangan membuat collection tambahan untuk file laporan atau media; batasan MVP tetap tanpa Storage dan tanpa backend server.
