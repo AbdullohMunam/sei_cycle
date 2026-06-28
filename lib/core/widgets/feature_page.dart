@@ -24,7 +24,7 @@ class FeaturePage extends StatelessWidget {
         final header = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.headlineMedium),
+            Text(title, style: Theme.of(context).textTheme.headlineSmall),
             if (subtitle != null) ...[
               const SizedBox(height: 4),
               Text(
@@ -39,10 +39,10 @@ class FeaturePage extends StatelessWidget {
 
         return Padding(
           padding: EdgeInsets.fromLTRB(
-            compact ? 16 : 24,
+            compact ? 14 : 22,
             compact ? 18 : 22,
-            compact ? 16 : 24,
-            compact ? 16 : 22,
+            compact ? 14 : 22,
+            compact ? 14 : 20,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +50,7 @@ class FeaturePage extends StatelessWidget {
               if (compact) ...[
                 header,
                 if (actions.isNotEmpty) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: Wrap(spacing: 8, runSpacing: 8, children: actions),
@@ -67,7 +67,7 @@ class FeaturePage extends StatelessWidget {
                     ],
                   ],
                 ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               Expanded(child: child),
             ],
           ),

@@ -51,8 +51,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return FeaturePage(
-      title: 'Notifikasi',
-      subtitle: 'Pengingat in-app dan alert ringan tanpa backend server.',
+      title: 'Notifikasi & Pengingat',
+      subtitle: 'Otomatis dari sistem logbook Kebun Sei',
       actions: [
         OutlinedButton.icon(
           onPressed: _markAllAsRead,
@@ -61,29 +61,50 @@ class _NotificationScreenState extends State<NotificationScreen> {
         ),
       ],
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppCard(
-            padding: const EdgeInsets.all(12),
-            child: DropdownButtonFormField<String?>(
-              initialValue: _type,
-              decoration: const InputDecoration(labelText: 'Filter tipe'),
-              items: const [
-                DropdownMenuItem(value: null, child: Text('Semua notifikasi')),
-                DropdownMenuItem(
-                  value: 'low_stock',
-                  child: Text('Stok rendah'),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _NotificationFilterChip(
+                  selected: _type == null,
+                  label: 'Semua',
+                  icon: Icons.notifications_none_rounded,
+                  color: AppColors.info,
+                  onSelected: () => setState(() => _type = null),
                 ),
-                DropdownMenuItem(
-                  value: 'schedule_overdue',
-                  child: Text('Jadwal overdue'),
+                _NotificationFilterChip(
+                  selected: _type == 'production_reminder',
+                  label: 'Jadwal Pakan',
+                  icon: Icons.notifications_none_rounded,
+                  color: AppColors.info,
+                  onSelected: () =>
+                      setState(() => _type = 'production_reminder'),
                 ),
-                DropdownMenuItem(
-                  value: 'production_reminder',
-                  child: Text('Pengingat produksi'),
+                _NotificationFilterChip(
+                  selected: _type == 'schedule_overdue',
+                  label: 'Peringatan',
+                  icon: Icons.warning_amber_rounded,
+                  color: AppColors.warning,
+                  onSelected: () => setState(() => _type = 'schedule_overdue'),
                 ),
-                DropdownMenuItem(value: 'system', child: Text('Sistem')),
+                _NotificationFilterChip(
+                  selected: _type == 'low_stock',
+                  label: 'Stok Rendah',
+                  icon: Icons.inventory_2_outlined,
+                  color: AppColors.error,
+                  onSelected: () => setState(() => _type = 'low_stock'),
+                ),
+                _NotificationFilterChip(
+                  selected: _type == 'system',
+                  label: 'Sistem',
+                  icon: Icons.check_circle_outline,
+                  color: AppColors.success,
+                  onSelected: () => setState(() => _type = 'system'),
+                ),
               ],
-              onChanged: (value) => setState(() => _type = value),
             ),
           ),
           const SizedBox(height: 14),
@@ -147,69 +168,117 @@ class _NotificationCard extends StatelessWidget {
       borderColor: notification.isRead
           ? AppColors.border
           : color.withValues(alpha: 0.35),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppIconBox(icon: _typeIcon(notification.type), color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      padding: EdgeInsets.zero,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+              child: AppIconBox(
+                icon: _typeIcon(notification.type),
+                color: color,
+                size: 42,
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        notification.title,
-                        style: Theme.of(context).textTheme.titleMedium,
+                    Text(
+                      notification.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      notification.body,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textMedium,
+                        height: 1.35,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    StatusBadge(
-                      label: _typeLabel(notification.type),
-                      color: color,
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        StatusBadge(
+                          label: _typeLabel(notification.type),
+                          color: AppColors.primaryGreen,
+                        ),
+                        StatusBadge(
+                          label: notification.scheduledAt == null
+                              ? shortDateFormat.format(notification.createdAt)
+                              : timeFormat.format(notification.scheduledAt!),
+                          color: AppColors.textMuted,
+                          icon: Icons.schedule_rounded,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  notification.body,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMedium),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    StatusBadge(
-                      label: notification.isRead ? 'Dibaca' : 'Baru',
-                      color: notification.isRead
-                          ? AppColors.textMuted
-                          : AppColors.primaryGreen,
-                      icon: notification.isRead
-                          ? Icons.mark_email_read_outlined
-                          : Icons.fiber_new_rounded,
-                    ),
-                    StatusBadge(
-                      label: shortDateFormat.format(notification.createdAt),
-                      color: AppColors.info,
-                      icon: Icons.calendar_today_outlined,
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-          if (onMarkRead != null)
-            IconButton(
-              onPressed: onMarkRead,
-              icon: const Icon(Icons.done_rounded),
-              tooltip: 'Tandai dibaca',
+            if (onMarkRead != null)
+              Center(
+                child: IconButton(
+                  onPressed: onMarkRead,
+                  icon: const Icon(Icons.check_circle_rounded),
+                  color: color,
+                  tooltip: 'Tandai dibaca',
+                ),
+              ),
+            Container(
+              width: 4,
+              margin: const EdgeInsets.fromLTRB(8, 18, 12, 18),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(999),
+              ),
             ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationFilterChip extends StatelessWidget {
+  const _NotificationFilterChip({
+    required this.selected,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onSelected,
+  });
+
+  final bool selected;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        selected: selected,
+        avatar: Icon(icon, size: 15, color: selected ? Colors.white : color),
+        label: Text(label),
+        selectedColor: color,
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : color,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+        onSelected: (_) => onSelected(),
       ),
     );
   }

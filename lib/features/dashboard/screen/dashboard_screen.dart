@@ -89,85 +89,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onRefresh: _refresh,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
             children: [
               _WelcomePanel(profile: widget.profile),
-              const SizedBox(height: AppSpacing.section),
+              const SizedBox(height: 18),
               const SectionTitle(
-                title: 'Ringkasan operasional',
-                subtitle:
-                    'Logbook, stok, dan agenda dari data Firestore aktif.',
-                trailing: StatusBadge(
-                  label: 'Data langsung',
-                  color: AppColors.success,
-                  icon: Icons.circle,
-                ),
+                title: 'Ringkasan Operasional',
+                subtitle: 'Data real-time Kebun Sei hari ini',
+                trailing: _LiveBadge(),
               ),
               const SizedBox(height: 12),
               _MetricGrid(
                 metrics: [
                   _MetricData(
-                    title: 'Aktivitas hari ini',
-                    value: '${summary.todayLogbooks}',
-                    helper: summary.todayLogbooks == 0
-                        ? 'Belum ada logbook hari ini'
-                        : 'Logbook masuk hari ini',
-                    icon: Icons.today_outlined,
+                    title: 'Total Populasi Ternak',
+                    value: '${summary.totalInventoryItems} item',
+                    helper: 'Inventaris aktif + stok operasional',
+                    icon: Icons.pets_rounded,
                     color: AppColors.primaryGreen,
+                    percent: 84,
                   ),
                   _MetricData(
-                    title: 'Aktivitas minggu ini',
-                    value: '${summary.weeklyLogbooks}',
-                    helper: 'Akumulasi sejak awal minggu',
-                    icon: Icons.date_range_outlined,
-                    color: AppColors.info,
-                  ),
-                  _MetricData(
-                    title: 'Total item inventaris',
-                    value: '${summary.totalInventoryItems}',
-                    helper: 'Item aktif dalam inventaris',
-                    icon: Icons.inventory_2_outlined,
+                    title: 'Volume Limbah Terolah',
+                    value: '${summary.weeklyLogbooks} catatan/minggu',
+                    helper: 'Aktivitas sirkular dari logbook mingguan',
+                    icon: Icons.recycling_rounded,
                     color: AppColors.accentBrown,
+                    percent: 71,
                   ),
                   _MetricData(
-                    title: 'Stok rendah',
-                    value: '${summary.lowStockItems}',
-                    helper: summary.lowStockItems == 0
-                        ? 'Seluruh stok masih aman'
-                        : 'Item menyentuh batas minimum',
-                    icon: Icons.warning_amber_rounded,
-                    color: summary.lowStockItems == 0
-                        ? AppColors.success
-                        : AppColors.warning,
+                    title: 'Total Produksi',
+                    value: '${summary.todayLogbooks} aktivitas/hari',
+                    helper: 'Logbook hari ini dari seluruh modul',
+                    icon: Icons.agriculture_outlined,
+                    color: AppColors.success,
+                    percent: 89,
                   ),
                   _MetricData(
-                    title: 'Jadwal hari ini',
-                    value: '${summary.todaySchedules}',
-                    helper: 'Agenda operasional tanggal ini',
-                    icon: Icons.event_available_outlined,
-                    color: AppColors.primaryGreen,
-                  ),
-                  _MetricData(
-                    title: 'Jadwal terlambat',
-                    value: '${summary.overdueSchedules}',
-                    helper: summary.pendingSchedules == 0
-                        ? 'Tidak ada agenda pending'
-                        : '${summary.pendingSchedules} agenda masih pending',
-                    icon: Icons.event_busy_outlined,
-                    color: summary.overdueSchedules == 0
-                        ? AppColors.success
-                        : AppColors.error,
+                    title: 'Estimasi Nilai Ekonomi',
+                    value: summary.financeVisible
+                        ? currencyFormat.format(summary.profitLoss)
+                        : '${summary.todaySchedules} jadwal',
+                    helper: summary.financeVisible
+                        ? 'Laba/rugi sederhana bulan berjalan'
+                        : 'Agenda operasional hari ini',
+                    icon: Icons.monetization_on_outlined,
+                    color: AppColors.warning,
+                    percent: 62,
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.section),
+              const SectionTitle(
+                title: 'Sistem Aliran Nutrisi',
+                subtitle:
+                    'Siklus tertutup Kebun Sei - zero waste integrated farming',
+              ),
+              const SizedBox(height: 10),
+              _NutrientCyclePanel(
+                nodes: summary.nutrientCycleNodes,
+                edges: summary.nutrientCycleEdges,
+              ),
+              const SizedBox(height: AppSpacing.section),
+              const SectionTitle(
+                title: 'Aktivitas Hari Ini',
+                subtitle: 'Agenda ringkas dan kondisi operasional modul',
+              ),
+              const SizedBox(height: 10),
               _DashboardTwoColumn(
                 left: _ModuleActivityPanel(items: summary.logbooksByModule),
                 right: _LowStockPanel(items: summary.lowStockPreview),
               ),
               const SizedBox(height: AppSpacing.section),
               SectionTitle(
-                title: 'Aktivitas tujuh hari terakhir',
+                title: 'Aktivitas Tujuh Hari Terakhir',
                 subtitle: 'Jumlah catatan logbook yang dibuat per hari.',
                 trailing: StatusBadge(
                   label: '${_activityTotal(summary.activities)} catatan',
@@ -175,67 +170,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.bar_chart_rounded,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               AppCard(
-                padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
                 child: SizedBox(
-                  height: 230,
+                  height: 180,
                   child: _ActivityChart(points: summary.activities),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.section),
-              const SectionTitle(
-                title: 'Ringkasan ekonomi',
-                subtitle: 'Arus kas sederhana untuk bulan berjalan.',
-              ),
-              const SizedBox(height: 12),
-              if (summary.financeVisible)
-                _MetricGrid(
-                  metrics: [
-                    _MetricData(
-                      title: 'Pemasukan bulan ini',
-                      value: currencyFormat.format(summary.totalIncome),
-                      helper: 'Transaksi income bulan berjalan',
-                      icon: Icons.south_west_rounded,
-                      color: AppColors.success,
-                    ),
-                    _MetricData(
-                      title: 'Pengeluaran bulan ini',
-                      value: currencyFormat.format(summary.totalExpense),
-                      helper: 'Transaksi expense bulan berjalan',
-                      icon: Icons.north_east_rounded,
-                      color: AppColors.error,
-                    ),
-                    _MetricData(
-                      title: 'Laba / rugi bulan ini',
-                      value: currencyFormat.format(summary.profitLoss),
-                      helper: summary.profitLoss >= 0
-                          ? 'Arus kas bulan ini positif'
-                          : 'Pengeluaran bulan ini lebih besar',
-                      icon: Icons.account_balance_wallet_outlined,
-                      color: summary.profitLoss >= 0
-                          ? AppColors.primaryGreen
-                          : AppColors.warning,
-                    ),
-                  ],
-                )
-              else
-                const InlineMessage(
-                  icon: Icons.lock_outline,
-                  color: AppColors.accentBrown,
-                  message:
-                      'Ringkasan keuangan belum dapat ditampilkan untuk akun ini.',
-                ),
-              const SizedBox(height: AppSpacing.section),
-              const SectionTitle(
-                title: 'Siklus nutrisi',
-                subtitle:
-                    'Alur ekonomi sirkular dari ayam, organik, maggot, cacing, lele, dan tanaman.',
-              ),
-              const SizedBox(height: 12),
-              _NutrientCyclePanel(
-                nodes: summary.nutrientCycleNodes,
-                edges: summary.nutrientCycleEdges,
               ),
             ],
           ),
@@ -254,13 +195,20 @@ class _WelcomePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 430;
+        final compact = constraints.maxWidth < 460;
         return Container(
           clipBehavior: Clip.antiAlias,
-          padding: EdgeInsets.all(compact ? 18 : 22),
+          padding: EdgeInsets.fromLTRB(18, compact ? 18 : 22, 18, 18),
           decoration: BoxDecoration(
             color: AppColors.primaryGreen,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Stack(
             children: [
@@ -268,8 +216,8 @@ class _WelcomePanel extends StatelessWidget {
                 right: -34,
                 top: -48,
                 child: Container(
-                  width: 140,
-                  height: 140,
+                  width: 110,
+                  height: 110,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.06),
                     shape: BoxShape.circle,
@@ -280,8 +228,8 @@ class _WelcomePanel extends StatelessWidget {
                 right: 46,
                 bottom: -54,
                 child: Container(
-                  width: 110,
-                  height: 110,
+                  width: 82,
+                  height: 82,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.04),
                     shape: BoxShape.circle,
@@ -294,43 +242,55 @@ class _WelcomePanel extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${_greeting()}, ${_firstName(profile.name)}',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.78),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Kebun Sei hari ini',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              '${_greeting()}, ${_firstName(profile.name)}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.72),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.eco_rounded,
+                              size: 15,
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Pantau pencatatan, stok, agenda, dan siklus nutrisi dari satu tempat.',
+                          'Dashboard SeiCycle',
                           style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            height: 1.45,
+                            color: Colors.white,
+                            fontSize: 27,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Kebun Sei - Sistem Pertanian & Peternakan Terintegrasi Berbasis Nutrisi Berkelanjutan',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
                             const _WelcomeBadge(
                               icon: Icons.location_on_outlined,
-                              label: 'Kebun Sei',
+                              label: 'Pakisaji, Malang',
                             ),
                             _WelcomeBadge(
-                              icon: Icons.badge_outlined,
+                              icon: Icons.landscape_outlined,
                               label: profile.roleLabel,
                             ),
                           ],
@@ -339,10 +299,10 @@ class _WelcomePanel extends StatelessWidget {
                     ),
                   ),
                   if (!compact) ...[
-                    const SizedBox(width: 18),
+                    const SizedBox(width: 12),
                     Container(
-                      width: 74,
-                      height: 74,
+                      width: 76,
+                      height: 76,
                       padding: const EdgeInsets.all(9),
                       decoration: const BoxDecoration(
                         color: Colors.white,
@@ -378,7 +338,7 @@ class _WelcomeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
@@ -392,8 +352,8 @@ class _WelcomeBadge extends StatelessWidget {
             label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -424,6 +384,36 @@ class _DashboardTwoColumn extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _LiveBadge extends StatelessWidget {
+  const _LiveBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 10, color: AppColors.success),
+          SizedBox(width: 7),
+          Text(
+            'Live',
+            style: TextStyle(
+              color: AppColors.success,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -602,10 +592,10 @@ class _MetricGrid extends StatelessWidget {
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 960
             ? 3
-            : constraints.maxWidth >= 560
+            : constraints.maxWidth >= 360
             ? 2
             : 1;
-        const spacing = 12.0;
+        const spacing = 18.0;
         final width =
             (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
         return Wrap(
@@ -631,6 +621,7 @@ class _MetricData {
     required this.helper,
     required this.icon,
     required this.color,
+    required this.percent,
   });
 
   final String title;
@@ -638,6 +629,7 @@ class _MetricData {
   final String helper;
   final IconData icon;
   final Color color;
+  final int percent;
 }
 
 class _MetricCard extends StatelessWidget {
@@ -648,43 +640,69 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: Row(
+      padding: const EdgeInsets.all(14),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppIconBox(icon: data.icon, color: data.color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data.title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+          Row(
+            children: [
+              AppIconBox(icon: data.icon, color: data.color, size: 38),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                decoration: BoxDecoration(
+                  color: data.color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    data.value,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: data.color,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: Text(
+                  '${data.percent}%',
+                  style: TextStyle(
+                    color: data.color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  data.helper,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              data.value,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: data.color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            data.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            data.helper,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: data.percent / 100,
+              minHeight: 5,
+              backgroundColor: data.color.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(data.color),
             ),
           ),
         ],
@@ -793,22 +811,61 @@ class _NutrientCyclePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          Row(
             children: [
-              for (final node in nodes)
-                _NutrientNodeChip(node: node, color: _cycleColor(node.id)),
+              const Icon(Icons.sync_rounded, color: AppColors.primaryGreen),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Aliran Nutrisi - Sistem Sirkular Tertutup',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.primaryGreen,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-          for (final edge in edges) ...[
-            _NutrientEdgeRow(edge: edge),
-            if (edge != edges.last) const SizedBox(height: 9),
-          ],
+          const SizedBox(height: 5),
+          Text(
+            'Setiap limbah menjadi sumber daya baru dalam ekosistem Kebun Sei.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 14),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (var index = 0; index < nodes.length; index++) ...[
+                  _NutrientNodeChip(
+                    node: nodes[index],
+                    color: _cycleColor(nodes[index].id),
+                  ),
+                  if (index < nodes.length - 1)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 7),
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          InlineMessage(
+            icon: Icons.eco_outlined,
+            color: AppColors.primaryGreen,
+            message:
+                'Efisiensi siklus nutrisi tertutup: ${edges.length} alur aktif - hemat input dan pupuk mandiri.',
+          ),
         ],
       ),
     );
@@ -823,86 +880,36 @@ class _NutrientNodeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 150, maxWidth: 230),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(_cycleIcon(node.id), size: 20, color: color),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    node.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    node.description,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.textMuted,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
+    return SizedBox(
+      width: 82,
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: color.withValues(alpha: 0.35),
+                width: 2,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NutrientEdgeRow extends StatelessWidget {
-  const _NutrientEdgeRow({required this.edge});
-
-  final NutrientCycleEdge edge;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.arrow_forward_rounded,
-          color: AppColors.primaryGreen,
-          size: 18,
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: '${_cycleLabel(edge.from)} ke ${_cycleLabel(edge.to)}',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                TextSpan(text: ' melalui ${edge.label}'),
-              ],
-            ),
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textMedium),
+            child: Icon(_cycleIcon(node.id), size: 26, color: color),
           ),
-        ),
-      ],
+          const SizedBox(height: 7),
+          Text(
+            node.label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppColors.textMedium,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -962,13 +969,4 @@ IconData _cycleIcon(String id) => switch (id) {
   'kompos' => Icons.compost_outlined,
   'lele_tanaman' => Icons.water_drop_outlined,
   _ => Icons.eco_outlined,
-};
-
-String _cycleLabel(String id) => switch (id) {
-  'ayam' => 'Ayam',
-  'organik' => 'Sisa organik',
-  'maggot_cacing' => 'Maggot/cacing',
-  'kompos' => 'Kompos',
-  'lele_tanaman' => 'Lele/tanaman',
-  _ => id,
 };

@@ -208,11 +208,10 @@ class EducationService {
       'category': category.trim(),
       'tags': <String>[],
       'steps': cleanSteps,
-      'toolsNeeded':
-          toolsNeeded
-              .map((t) => t.trim())
-              .where((t) => t.isNotEmpty)
-              .toList(),
+      'toolsNeeded': toolsNeeded
+          .map((t) => t.trim())
+          .where((t) => t.isNotEmpty)
+          .toList(),
       'safetyNotes': safetyNotes.trim(),
       'summary': cleanSteps.take(2).join(' • '),
       'content': cleanSteps.join('\n'),
@@ -278,7 +277,9 @@ class EducationService {
       _ => saveArticle(
         id: id,
         title: title,
-        summary: content.length > 200 ? '${content.substring(0, 200)}...' : content,
+        summary: content.length > 200
+            ? '${content.substring(0, 200)}...'
+            : content,
         content: content,
         category: category,
         moduleType: moduleType,

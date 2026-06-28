@@ -51,6 +51,19 @@ class _AppShellState extends State<AppShell> {
         selectedIcon: Icons.menu_book_rounded,
         builder: () => LogbookScreen(profile: widget.profile),
       ),
+    _Destination(
+      label: 'Edukasi',
+      icon: Icons.school_outlined,
+      selectedIcon: Icons.school_rounded,
+      builder: () => EducationScreen(profile: widget.profile),
+    ),
+    _Destination(
+      label: 'Notifikasi',
+      icon: Icons.notifications_none_outlined,
+      selectedIcon: Icons.notifications_rounded,
+      builder: () => NotificationScreen(profile: widget.profile),
+      isBadged: true,
+    ),
     if (widget.profile.canViewInventory)
       _Destination(
         label: 'Inventaris',
@@ -65,12 +78,6 @@ class _AppShellState extends State<AppShell> {
         selectedIcon: Icons.event_note_rounded,
         builder: () => ScheduleScreen(profile: widget.profile),
       ),
-    _Destination(
-      label: 'Edukasi',
-      icon: Icons.school_outlined,
-      selectedIcon: Icons.school_rounded,
-      builder: () => EducationScreen(profile: widget.profile),
-    ),
     if (widget.profile.canViewFinance)
       _Destination(
         label: 'Keuangan',
@@ -92,13 +99,6 @@ class _AppShellState extends State<AppShell> {
         selectedIcon: Icons.analytics_rounded,
         builder: () => ReportScreen(profile: widget.profile),
       ),
-    _Destination(
-      label: 'Notifikasi',
-      icon: Icons.notifications_none_outlined,
-      selectedIcon: Icons.notifications_rounded,
-      builder: () => NotificationScreen(profile: widget.profile),
-      isBadged: true,
-    ),
     _Destination(
       label: 'Profil',
       icon: Icons.person_outline,
@@ -191,26 +191,16 @@ class _MobileShell extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 64,
-        titleSpacing: 16,
+        toolbarHeight: 60,
+        titleSpacing: 18,
         title: Row(
           children: [
-            const _BrandLogo(size: 38),
+            const _BrandLogo(size: 40),
             const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('SeiCycle'),
-                  Text(
-                    destinations[selectedIndex].label,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            const Expanded(
+              child: Text(
+                'SeiCycle',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
             ),
           ],
@@ -220,9 +210,9 @@ class _MobileShell extends StatelessWidget {
             IconButton(
               onPressed: () => onSelected(profileIndex),
               tooltip: 'Buka profil',
-              icon: _ProfileAvatar(profile: profile, radius: 17),
+              icon: const Icon(Icons.person_outline_rounded, size: 26),
             ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
         ],
       ),
       body: body,
@@ -257,39 +247,51 @@ class _MobileNavigation extends StatelessWidget {
         ? visibleCount
         : selectedIndex;
 
-    return NavigationBar(
-      selectedIndex: navigationIndex,
-      onDestinationSelected: (index) {
-        if (!hasOverflow || index < visibleCount) {
-          onSelected(index);
-          return;
-        }
-        _showMore(context, visibleCount);
-      },
-      destinations: [
-        for (var index = 0; index < visibleCount; index++)
-          NavigationDestination(
-            icon: destinations[index].isBadged && unreadCount > 0
-                ? Badge.count(
-                    count: unreadCount,
-                    child: Icon(destinations[index].icon),
-                  )
-                : Icon(destinations[index].icon),
-            selectedIcon: destinations[index].isBadged && unreadCount > 0
-                ? Badge.count(
-                    count: unreadCount,
-                    child: Icon(destinations[index].selectedIcon),
-                  )
-                : Icon(destinations[index].selectedIcon),
-            label: destinations[index].label,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
           ),
-        if (hasOverflow)
-          const NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view_rounded),
-            label: 'Lainnya',
-          ),
-      ],
+        ],
+      ),
+      child: NavigationBar(
+        selectedIndex: navigationIndex,
+        onDestinationSelected: (index) {
+          if (!hasOverflow || index < visibleCount) {
+            onSelected(index);
+            return;
+          }
+          _showMore(context, visibleCount);
+        },
+        destinations: [
+          for (var index = 0; index < visibleCount; index++)
+            NavigationDestination(
+              icon: destinations[index].isBadged && unreadCount > 0
+                  ? Badge.count(
+                      count: unreadCount,
+                      child: Icon(destinations[index].icon),
+                    )
+                  : Icon(destinations[index].icon),
+              selectedIcon: destinations[index].isBadged && unreadCount > 0
+                  ? Badge.count(
+                      count: unreadCount,
+                      child: Icon(destinations[index].selectedIcon),
+                    )
+                  : Icon(destinations[index].selectedIcon),
+              label: destinations[index].label,
+            ),
+          if (hasOverflow)
+            const NavigationDestination(
+              icon: Icon(Icons.grid_view_outlined),
+              selectedIcon: Icon(Icons.grid_view_rounded),
+              label: 'Lainnya',
+            ),
+        ],
+      ),
     );
   }
 

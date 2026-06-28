@@ -74,7 +74,7 @@ class _EducationScreenState extends State<EducationScreen> {
   Widget build(BuildContext context) {
     return FeaturePage(
       title: 'Edukasi Kebun Sei',
-      subtitle: 'Panduan lapangan, artikel, video, dan SOP untuk tim kebun.',
+      subtitle: 'Artikel, tutorial, dan SOP praktis untuk tim kebun',
       actions: [
         if (widget.profile.canManageEducation)
           FilledButton.icon(
@@ -84,45 +84,73 @@ class _EducationScreenState extends State<EducationScreen> {
           ),
       ],
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppCard(
-            padding: const EdgeInsets.all(12),
-            child: ResponsiveFormRow(
-              breakpoint: 720,
+          TextField(
+            onChanged: (value) => setState(() => _query = value),
+            decoration: const InputDecoration(
+              hintText: 'Cari artikel atau tutorial...',
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
               children: [
-                TextField(
-                  onChanged: (value) => setState(() => _query = value),
-                  decoration: const InputDecoration(
-                    hintText: 'Cari judul atau isi panduan...',
-                    prefixIcon: Icon(Icons.search),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    selected: _type == null && _moduleType == null,
+                    avatar: const Icon(Icons.check_rounded, size: 19),
+                    label: const Text('Semua'),
+                    labelStyle: TextStyle(
+                      color: _type == null && _moduleType == null
+                          ? Colors.white
+                          : AppColors.primaryGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    onSelected: (_) => setState(() {
+                      _type = null;
+                      _moduleType = null;
+                    }),
                   ),
                 ),
-                DropdownButtonFormField<String?>(
-                  initialValue: _type,
-                  decoration: const InputDecoration(labelText: 'Jenis konten'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Semua jenis')),
-                    for (final type in EducationType.values)
-                      DropdownMenuItem(
-                        value: type,
-                        child: Text(EducationType.label(type)),
+                for (final type in EducationType.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      selected: _type == type,
+                      label: Text(EducationType.label(type)),
+                      labelStyle: TextStyle(
+                        color: _type == type
+                            ? Colors.white
+                            : AppColors.primaryGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
-                  ],
-                  onChanged: (value) => setState(() => _type = value),
-                ),
-                DropdownButtonFormField<String?>(
-                  initialValue: _moduleType,
-                  decoration: const InputDecoration(labelText: 'Modul Kebun'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Semua Modul')),
-                    for (final module in FarmModules.values)
-                      DropdownMenuItem(
-                        value: module.id,
-                        child: Text(module.name),
+                      onSelected: (_) => setState(() => _type = type),
+                    ),
+                  ),
+                for (final module in FarmModules.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      selected: _moduleType == module.id,
+                      label: Text(module.name),
+                      labelStyle: TextStyle(
+                        color: _moduleType == module.id
+                            ? Colors.white
+                            : AppColors.primaryGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
-                  ],
-                  onChanged: (value) => setState(() => _moduleType = value),
-                ),
+                      onSelected: (_) =>
+                          setState(() => _moduleType = module.id),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -147,7 +175,8 @@ class _EducationScreenState extends State<EducationScreen> {
                 }).toList();
                 if (contents.isEmpty) {
                   return EmptyState(
-                    title: _query.isEmpty && _type == null && _moduleType == null
+                    title:
+                        _query.isEmpty && _type == null && _moduleType == null
                         ? 'Belum ada materi edukasi'
                         : 'Materi tidak ditemukan',
                     message: _query.isEmpty
@@ -166,9 +195,9 @@ class _EducationScreenState extends State<EducationScreen> {
                     return GridView.builder(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: columns,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        mainAxisExtent: 250,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        mainAxisExtent: 286,
                       ),
                       itemCount: contents.length,
                       itemBuilder: (context, index) {
@@ -215,46 +244,78 @@ class _EducationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 62,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            color: color.withValues(alpha: 0.1),
-            child: Row(
+          SizedBox(
+            height: 112,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                AppIconBox(icon: _iconForType(content.type), color: color),
-                const SizedBox(width: 10),
-                StatusBadge(label: EducationType.label(content.type), color: color),
-                const Spacer(),
-                if (content.status != EducationStatus.published)
-                  StatusBadge(
-                    label: EducationStatus.label(content.status),
-                    color: content.status == EducationStatus.archived
-                        ? AppColors.textMuted
-                        : AppColors.warning,
-                    icon: content.status == EducationStatus.archived
-                        ? Icons.archive_outlined
-                        : Icons.edit_note_outlined,
+                _EducationImage(content: content),
+                if (content.type == EducationType.video)
+                  const Center(
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black45,
+                      foregroundColor: Colors.white,
+                      radius: 22,
+                      child: Icon(Icons.play_arrow_rounded, size: 32),
+                    ),
                   ),
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      EducationType.label(content.type),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 13, 14, 10),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
+                    _educationCategory(content),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _moduleColor(content.moduleType),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
                     content.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 6),
                   Expanded(
                     child: Text(
                       content.previewText,
-                      maxLines: 4,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textMuted,
@@ -263,44 +324,27 @@ class _EducationCard extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      if (content.videoUrl.isNotEmpty) ...[
-                        const Icon(
-                          Icons.link_rounded,
-                          size: 15,
-                          color: AppColors.primaryGreen,
+                      Icon(
+                        _iconForType(content.type),
+                        size: 17,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          content.type == EducationType.video
+                              ? 'Video Tutorial'
+                              : EducationType.label(content.type),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(color: AppColors.textMuted),
                         ),
-                        const SizedBox(width: 5),
-                        const Expanded(
-                          child: Text(
-                            'Tautan tersedia',
-                            style: TextStyle(
-                              color: AppColors.primaryGreen,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ] else if (content.moduleType.isNotEmpty) ...[
-                        const Icon(
-                          Icons.eco_outlined,
-                          size: 15,
-                          color: AppColors.accentBrown,
-                        ),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          child: Text(
-                            FarmModules.nameOf(content.moduleType),
-                            style: const TextStyle(
-                              color: AppColors.accentBrown,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ] else
-                        const Spacer(),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.primaryGreen,
+                      ),
                       if (canEdit || canDelete)
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -334,6 +378,58 @@ class _EducationCard extends StatelessWidget {
     );
   }
 }
+
+class _EducationImage extends StatelessWidget {
+  const _EducationImage({required this.content});
+
+  final EducationContent content;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = _educationAsset(content);
+    if (content.thumbnailUrl.isNotEmpty) {
+      return Image.network(
+        content.thumbnailUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Image.asset(fallback, fit: BoxFit.cover),
+      );
+    }
+    return Image.asset(fallback, fit: BoxFit.cover);
+  }
+}
+
+String _educationAsset(EducationContent content) {
+  if (content.type == EducationType.video && content.moduleType == 'lele') {
+    return 'lib/assets/edukasi/lele_bioflok.png';
+  }
+  return switch (content.moduleType) {
+    'ayam_kampung' => 'lib/assets/edukasi/ayam_pakan.png',
+    'maggot_bsf' => 'lib/assets/edukasi/maggot_bsf.png',
+    'cacing_tanah' =>
+      content.type == EducationType.video
+          ? 'lib/assets/edukasi/panen_kascing.png'
+          : 'lib/assets/edukasi/cacing_media.png',
+    'lele' => 'lib/assets/edukasi/lele_fcr.png',
+    'tanaman' => 'lib/assets/edukasi/tanaman_kangkung.png',
+    _ => 'lib/assets/edukasi/siklus_nutrisi.png',
+  };
+}
+
+String _educationCategory(EducationContent content) {
+  if (content.moduleType.isNotEmpty) {
+    return FarmModules.nameOf(content.moduleType).toUpperCase();
+  }
+  return EducationType.label(content.type).toUpperCase();
+}
+
+Color _moduleColor(String moduleType) => switch (moduleType) {
+  'ayam_kampung' => AppColors.warning,
+  'maggot_bsf' => AppColors.accentBrown,
+  'cacing_tanah' => AppColors.primaryGreen,
+  'lele' => AppColors.info,
+  'tanaman' => AppColors.success,
+  _ => AppColors.primaryGreen,
+};
 
 IconData _iconForType(String type) => switch (type) {
   EducationType.video => Icons.ondemand_video_outlined,
@@ -387,17 +483,20 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
   void initState() {
     super.initState();
     _title = TextEditingController(text: widget.content?.title);
-    
+
     // Reverse logic for content based on type for the simple form
     String initialContent = widget.content?.content ?? '';
-    if (widget.content?.type == EducationType.sop && widget.content!.steps.isNotEmpty) {
+    if (widget.content?.type == EducationType.sop &&
+        widget.content!.steps.isNotEmpty) {
       initialContent = widget.content!.steps.join('\n');
     }
     _content = TextEditingController(text: initialContent);
     _url = TextEditingController(text: widget.content?.videoUrl);
     _type = widget.content?.type ?? EducationType.article;
     _status = widget.content?.status ?? EducationStatus.draft;
-    _moduleType = (widget.content?.moduleType.isNotEmpty ?? false) ? widget.content!.moduleType : null;
+    _moduleType = (widget.content?.moduleType.isNotEmpty ?? false)
+        ? widget.content!.moduleType
+        : null;
   }
 
   @override
@@ -458,9 +557,14 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
                     ),
                     DropdownButtonFormField<String?>(
                       initialValue: _moduleType,
-                      decoration: const InputDecoration(labelText: 'Modul (Opsional)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Modul (Opsional)',
+                      ),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('Umum')),
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('Umum'),
+                        ),
                         for (final module in FarmModules.values)
                           DropdownMenuItem(
                             value: module.id,
@@ -476,9 +580,9 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
                   controller: _content,
                   maxLines: 7,
                   decoration: InputDecoration(
-                    labelText: _type == EducationType.sop 
-                      ? 'Langkah SOP (pisahkan dengan enter)' 
-                      : 'Isi konten/deskripsi',
+                    labelText: _type == EducationType.sop
+                        ? 'Langkah SOP (pisahkan dengan enter)'
+                        : 'Isi konten/deskripsi',
                   ),
                   validator: _required,
                 ),
@@ -493,7 +597,9 @@ class _EducationFormDialogState extends State<_EducationFormDialog> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status Publikasi'),
+                  decoration: const InputDecoration(
+                    labelText: 'Status Publikasi',
+                  ),
                   items: [
                     for (final status in EducationStatus.values)
                       DropdownMenuItem(

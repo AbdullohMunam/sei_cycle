@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
 abstract final class AppSpacing {
-  static const double page = 20;
-  static const double pageCompact = 16;
-  static const double section = 24;
-  static const double card = 16;
-  static const double gap = 12;
+  static const double page = 18;
+  static const double pageCompact = 14;
+  static const double section = 20;
+  static const double card = 14;
+  static const double gap = 10;
 }
 
 class AppCard extends StatelessWidget {
@@ -29,13 +29,15 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(8),
-      side: BorderSide(color: borderColor ?? AppColors.border),
+      borderRadius: BorderRadius.circular(16),
+      side: BorderSide(color: borderColor ?? Colors.transparent),
     );
     final content = Padding(padding: padding, child: child);
 
     return Material(
       color: color ?? AppColors.surface,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.06),
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: onTap == null ? content : InkWell(onTap: onTap, child: content),
@@ -98,24 +100,24 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: 5),
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
           ],
           Text(
             label,
             style: TextStyle(
               color: color,
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -130,7 +132,7 @@ class AppIconBox extends StatelessWidget {
     required this.icon,
     required this.color,
     super.key,
-    this.size = 44,
+    this.size = 38,
   });
 
   final IconData icon;
@@ -143,8 +145,8 @@ class AppIconBox extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(icon, color: color, size: size * 0.5),
     );
@@ -176,13 +178,13 @@ class AppMenuCard extends StatelessWidget {
       child: Row(
         children: [
           AppIconBox(icon: icon, color: color),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: Theme.of(
@@ -192,7 +194,7 @@ class AppMenuCard extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ],
       ),
     );
@@ -254,7 +256,7 @@ class InlineMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),

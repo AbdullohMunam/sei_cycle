@@ -23,7 +23,7 @@ class LogbookScreen extends StatefulWidget {
 
 class _LogbookScreenState extends State<LogbookScreen> {
   late final LogbookService _service;
-  String? _moduleId;
+  String? _moduleId = FarmModules.ayamKampung.id;
   DateTime? _date;
 
   @override
@@ -87,7 +87,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
   Widget build(BuildContext context) {
     return FeaturePage(
       title: 'Logbook Operasional',
-      subtitle: 'Catatan harian Ayam, Maggot, Cacing, Lele, dan Tanaman.',
+      subtitle: 'Catat aktivitas harian setiap modul budidaya',
       actions: [
         if (widget.profile.canManageLogbooks)
           FilledButton.icon(
@@ -96,83 +96,59 @@ class _LogbookScreenState extends State<LogbookScreen> {
             label: const Text('Tambah catatan'),
           ),
       ],
-      child: Column(
-        children: [
-          AppCard(
-            padding: const EdgeInsets.all(12),
-            child: ResponsiveFormRow(
-              breakpoint: 560,
-              children: [
-                DropdownButtonFormField<String?>(
-                  initialValue: _moduleId,
-                  decoration: const InputDecoration(labelText: 'Modul kebun'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('Semua modul'),
-                    ),
-                    for (final module in FarmModules.values)
-                      DropdownMenuItem(
-                        value: module.id,
-                        child: Text(module.name),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _moduleId = value),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today_outlined),
-                  label: Text(
-                    _date == null
-                        ? 'Semua tanggal'
-                        : shortDateFormat.format(_date!),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (_date != null) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => setState(() => _date = null),
-                icon: const Icon(Icons.close_rounded, size: 17),
-                label: const Text('Hapus filter tanggal'),
+      child: StreamBuilder<List<LogbookEntry>>(
+        stream: _service.watchEntries(moduleId: _moduleId, date: _date),
+        builder: (context, snapshot) {
+          final state = asyncSnapshotState(snapshot);
+          final entries = state == null ? snapshot.requireData : null;
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 16),
+            children: [
+              _ModuleFilterBar(
+                selectedModuleId: _moduleId,
+                onSelected: (value) => setState(() => _moduleId = value),
               ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Expanded(
-            child: StreamBuilder<List<LogbookEntry>>(
-              stream: _service.watchEntries(moduleId: _moduleId, date: _date),
-              builder: (context, snapshot) {
-                final state = asyncSnapshotState(snapshot);
-                if (state != null) return state;
-                final entries = snapshot.requireData;
-                if (entries.isEmpty) {
-                  return const EmptyState(
-                    title: 'Belum ada aktivitas pada filter ini',
-                    message:
-                        'Data akan muncul setelah pencatatan operasional pertama dibuat.',
-                    icon: Icons.menu_book_outlined,
-                  );
-                }
-                return ListView.separated(
-                  itemCount: entries.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) => _LogbookEntryCard(
+              const SizedBox(height: 12),
+              _ModuleHero(moduleId: _moduleId ?? FarmModules.ayamKampung.id),
+              const SizedBox(height: 12),
+              _DailyInputPanel(
+                moduleId: _moduleId ?? '',
+                date: _date,
+                canManage: widget.profile.canManageLogbooks,
+                onPickDate: _pickDate,
+                onResetDate: () => setState(() => _date = null),
+                onSave: _openForm,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Riwayat Catatan',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 10),
+              if (state != null)
+                SizedBox(height: 220, child: state)
+              else if (entries!.isEmpty)
+                const EmptyState(
+                  title: 'Belum ada aktivitas pada filter ini',
+                  message:
+                      'Data akan muncul setelah pencatatan operasional pertama dibuat.',
+                  icon: Icons.menu_book_outlined,
+                )
+              else
+                for (var index = 0; index < entries.length; index++) ...[
+                  _LogbookEntryCard(
                     entry: entries[index],
                     canEdit: widget.profile.canManageLogbooks,
                     canDelete: widget.profile.canDeleteLogbooks,
                     onEdit: () => _openForm(entries[index]),
                     onDelete: () => _delete(entries[index]),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                  if (index < entries.length - 1) const SizedBox(height: 10),
+                ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -302,6 +278,299 @@ class _LogbookEntryCard extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _ModuleFilterBar extends StatelessWidget {
+  const _ModuleFilterBar({
+    required this.selectedModuleId,
+    required this.onSelected,
+  });
+
+  final String? selectedModuleId;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: FarmModules.values.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final module = FarmModules.values[index];
+          final selected = module.id == selectedModuleId;
+          final color = _moduleColor(module.id);
+          return ChoiceChip(
+            selected: selected,
+            avatar: Icon(
+              _moduleIcon(module.id),
+              size: 16,
+              color: selected ? Colors.white : color,
+            ),
+            label: Text('Modul ${module.name.split(' ').first}'),
+            selectedColor: color,
+            labelStyle: TextStyle(
+              color: selected ? Colors.white : AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onSelected: (_) => onSelected(module.id),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DailyInputPanel extends StatelessWidget {
+  const _DailyInputPanel({
+    required this.moduleId,
+    required this.date,
+    required this.canManage,
+    required this.onPickDate,
+    required this.onResetDate,
+    required this.onSave,
+  });
+
+  final String moduleId;
+  final DateTime? date;
+  final bool canManage;
+  final VoidCallback onPickDate;
+  final VoidCallback onResetDate;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _moduleColor(moduleId);
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.edit_outlined, color: color, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Input Harian',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onPickDate,
+                icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                label: Text(
+                  date == null ? 'Hari ini' : shortDateFormat.format(date!),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ReadonlyField(
+            label: 'Modul Aktif',
+            value: FarmModules.nameOf(moduleId),
+            unit: 'aktif',
+          ),
+          const SizedBox(height: 8),
+          _ReadonlyField(
+            label: 'Filter Tanggal',
+            value: date == null
+                ? shortDateFormat.format(DateTime.now())
+                : shortDateFormat.format(date!),
+            unit: date == null ? 'hari ini' : 'filter',
+          ),
+          if (canManage || date != null) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (date != null)
+                  OutlinedButton.icon(
+                    onPressed: onResetDate,
+                    icon: const Icon(Icons.history_rounded, size: 16),
+                    label: const Text('Reset'),
+                  ),
+                if (canManage)
+                  FilledButton.icon(
+                    onPressed: onSave,
+                    icon: const Icon(Icons.save_outlined, size: 16),
+                    label: const Text('Simpan Catatan'),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ModuleHero extends StatelessWidget {
+  const _ModuleHero({required this.moduleId});
+
+  final String moduleId;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _moduleColor(moduleId);
+    final data = _moduleHeroData(moduleId);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withValues(alpha: 0.72)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_moduleIcon(moduleId), color: Colors.white, size: 22),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  data.title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            data.subtitle,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              for (var index = 0; index < data.stats.length; index++) ...[
+                Expanded(
+                  child: _HeroStat(
+                    value: data.stats[index].$1,
+                    label: data.stats[index].$2,
+                  ),
+                ),
+                if (index < data.stats.length - 1) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, fontSize: 10),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReadonlyField extends StatelessWidget {
+  const _ReadonlyField({
+    required this.label,
+    required this.value,
+    required this.unit,
+  });
+
+  final String label;
+  final String value;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          constraints: const BoxConstraints(minHeight: 50),
+          padding: const EdgeInsets.fromLTRB(14, 18, 14, 8),
+          decoration: BoxDecoration(
+            color: AppColors.field,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                unit,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 14,
+          top: -2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            color: AppColors.surface,
+            child: Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -506,6 +775,57 @@ Color _moduleColor(String moduleId) => switch (moduleId) {
   'lele' => AppColors.info,
   'tanaman' => AppColors.success,
   _ => AppColors.textMuted,
+};
+
+({String title, String subtitle, List<(String, String)> stats}) _moduleHeroData(
+  String moduleId,
+) => switch (moduleId) {
+  'ayam_kampung' => (
+    title: 'Modul Ayam',
+    subtitle: '150 ekor ayam kampung & petelur - Target 85+ telur/hari',
+    stats: [
+      ('150 ekor', 'Populasi'),
+      ('88 butir', 'Produksi Kemarin'),
+      ('85 butir', 'Target Harian'),
+    ],
+  ),
+  'maggot_bsf' => (
+    title: 'Modul Maggot BSF',
+    subtitle: 'Pengolahan limbah organik menjadi pakan bernutrisi',
+    stats: [
+      ('50 kg', 'Media'),
+      ('12 hari', 'Umur Batch'),
+      ('18 kg', 'Estimasi Panen'),
+    ],
+  ),
+  'cacing_tanah' => (
+    title: 'Modul Cacing',
+    subtitle: 'Produksi kascing dan pupuk cair untuk tanaman pangan',
+    stats: [('100 rak', 'Unit Media'), ('72%', 'Lembap'), ('15 kg', 'Kascing')],
+  ),
+  'tanaman' => (
+    title: 'Modul Tanaman Pangan Organik',
+    subtitle: 'Talas - Singkong - Kacang Panjang - Pepaya - 500 m2 lahan',
+    stats: [
+      ('4 jenis', 'Komoditas'),
+      ('+200 m2', 'Luas Lahan'),
+      ('Kascing', 'Pupuk'),
+    ],
+  ),
+  'lele' => (
+    title: 'Modul Lele',
+    subtitle: 'Kolam bioflok dengan pakan alternatif maggot segar',
+    stats: [
+      ('800 ekor', 'Populasi'),
+      ('89%', 'Survival Rate'),
+      ('2,5 kg', 'Pakan Pagi'),
+    ],
+  ),
+  _ => (
+    title: 'Modul Kebun',
+    subtitle: 'Catatan operasional harian setiap modul budidaya',
+    stats: [('Aktif', 'Status'), ('Hari ini', 'Tanggal'), ('Logbook', 'Mode')],
+  ),
 };
 
 IconData _moduleIcon(String moduleId) => switch (moduleId) {

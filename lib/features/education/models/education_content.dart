@@ -137,7 +137,8 @@ class EducationContent {
   }
 
   /// URL video aktif (mendukung externalVideoUrl dan externalUrl lama).
-  String get videoUrl => externalVideoUrl.isNotEmpty ? externalVideoUrl : externalUrl;
+  String get videoUrl =>
+      externalVideoUrl.isNotEmpty ? externalVideoUrl : externalUrl;
 
   factory EducationContent.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
@@ -146,7 +147,10 @@ class EducationContent {
 
     // Backward compat: isPublished → status
     final rawStatus = stringField(data, const ['status']);
-    final isPublishedLegacy = boolField(data, const ['isPublished', 'is_published']);
+    final isPublishedLegacy = boolField(data, const [
+      'isPublished',
+      'is_published',
+    ]);
     final resolvedStatus = rawStatus.isNotEmpty
         ? rawStatus
         : isPublishedLegacy
@@ -177,7 +181,11 @@ class EducationContent {
       moduleType: stringField(data, const ['moduleType', 'module_type']),
       category: stringField(data, const ['category']),
       tags: tags,
-      authorId: stringField(data, const ['authorId', 'createdBy', 'created_by']),
+      authorId: stringField(data, const [
+        'authorId',
+        'createdBy',
+        'created_by',
+      ]),
       createdBy: stringField(data, const ['createdBy', 'created_by']),
       updatedBy: stringField(data, const ['updatedBy', 'updated_by']),
       createdAt: dateTimeField(data, const ['createdAt', 'created_at']),
@@ -186,10 +194,10 @@ class EducationContent {
       summary: stringField(data, const ['summary']),
       content: stringField(data, const ['content', 'description']),
       thumbnailUrl: stringField(data, const ['thumbnailUrl', 'thumbnail_url']),
-      externalVideoUrl: stringField(
-        data,
-        const ['externalVideoUrl', 'external_video_url'],
-      ),
+      externalVideoUrl: stringField(data, const [
+        'externalVideoUrl',
+        'external_video_url',
+      ]),
       duration: stringField(data, const ['duration']),
       steps: steps,
       toolsNeeded: tools,

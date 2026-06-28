@@ -30,7 +30,9 @@ class AnalyticsModel {
   }
 
   List<InventoryItem> get lowStockItems {
-    return inventoryItems.where((item) => item.currentStock <= item.minStock).toList();
+    return inventoryItems
+        .where((item) => item.currentStock <= item.minStock)
+        .toList();
   }
 
   double get totalIncome {
