@@ -1,0 +1,648 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../features/dashboard/screen/dashboard_screen.dart';
+import '../features/education/screen/education_screen.dart';
+import '../features/finance/screen/finance_screen.dart';
+import '../features/inventory/screen/inventory_screen.dart';
+import '../features/logbook/screen/logbook_screen.dart';
+import '../features/notification/screen/notification_screen.dart';
+import '../features/notification/services/notification_service.dart';
+import '../features/profile/models/app_user.dart';
+import '../features/profile/screen/profile_screen.dart';
+import '../features/recommendations/screen/recommendation_screen.dart';
+import '../features/reports/screens/report_screen.dart';
+import '../features/schedule/screen/schedule_screen.dart';
+import '../theme/app_theme.dart';
+
+class AppShell extends StatefulWidget {
+  const AppShell({required this.profile, super.key});
+
+  final AppUser profile;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  int _selectedIndex = 0;
+  late final Stream<int> _unreadCountStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _unreadCountStream = NotificationService().watchUnreadCount(
+      userId: widget.profile.uid,
+      role: widget.profile.effectiveRole,
+    );
+  }
+
+  List<_Destination> get _destinations => <_Destination>[
+    _Destination(
+      label: 'Dashboard',
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard_rounded,
+      builder: () => DashboardScreen(profile: widget.profile),
+    ),
+    if (widget.profile.canViewLogbooks)
+      _Destination(
+        label: 'Logbook',
+        icon: Icons.menu_book_outlined,
+        selectedIcon: Icons.menu_book_rounded,
+        builder: () => LogbookScreen(profile: widget.profile),
+      ),
+    _Destination(
+      label: 'Edukasi',
+      icon: Icons.school_outlined,
+      selectedIcon: Icons.school_rounded,
+      builder: () => EducationScreen(profile: widget.profile),
+    ),
+    _Destination(
+      label: 'Notifikasi',
+      icon: Icons.notifications_none_outlined,
+      selectedIcon: Icons.notifications_rounded,
+      builder: () => NotificationScreen(profile: widget.profile),
+      isBadged: true,
+    ),
+    if (widget.profile.canViewInventory)
+      _Destination(
+        label: 'Inventaris',
+        icon: Icons.inventory_2_outlined,
+        selectedIcon: Icons.inventory_2_rounded,
+        builder: () => InventoryScreen(profile: widget.profile),
+      ),
+    if (widget.profile.canViewSchedules)
+      _Destination(
+        label: 'Jadwal',
+        icon: Icons.event_note_outlined,
+        selectedIcon: Icons.event_note_rounded,
+        builder: () => ScheduleScreen(profile: widget.profile),
+      ),
+    if (widget.profile.canViewFinance)
+      _Destination(
+        label: 'Keuangan',
+        icon: Icons.account_balance_wallet_outlined,
+        selectedIcon: Icons.account_balance_wallet_rounded,
+        builder: () => FinanceScreen(profile: widget.profile),
+      ),
+    if (widget.profile.canViewRecommendations)
+      _Destination(
+        label: 'Rekomendasi',
+        icon: Icons.auto_awesome_outlined,
+        selectedIcon: Icons.auto_awesome_rounded,
+        builder: () => RecommendationScreen(profile: widget.profile),
+      ),
+    if (widget.profile.canViewReports)
+      _Destination(
+        label: 'Laporan',
+        icon: Icons.analytics_outlined,
+        selectedIcon: Icons.analytics_rounded,
+        builder: () => ReportScreen(profile: widget.profile),
+      ),
+    _Destination(
+      label: 'Profil',
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person_rounded,
+      builder: () => ProfileScreen(profile: widget.profile),
+    ),
+  ];
+
+  void _select(int index) {
+    if (index == _selectedIndex) return;
+    setState(() => _selectedIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final destinations = _destinations;
+    if (_selectedIndex >= destinations.length) _selectedIndex = 0;
+
+    return StreamBuilder<int>(
+      stream: _unreadCountStream,
+      initialData: 0,
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final content = destinations[_selectedIndex].builder();
+            if (constraints.maxWidth >= 900) {
+              return _DesktopShell(
+                profile: widget.profile,
+                destinations: destinations,
+                selectedIndex: _selectedIndex,
+                onSelected: _select,
+                body: content,
+                unreadCount: unreadCount,
+              );
+            }
+            return _MobileShell(
+              profile: widget.profile,
+              destinations: destinations,
+              selectedIndex: _selectedIndex,
+              onSelected: _select,
+              body: content,
+              unreadCount: unreadCount,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _Destination {
+  const _Destination({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.builder,
+    this.isBadged = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final Widget Function() builder;
+  final bool isBadged;
+}
+
+class _MobileShell extends StatelessWidget {
+  const _MobileShell({
+    required this.profile,
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+    required this.body,
+    required this.unreadCount,
+  });
+
+  final AppUser profile;
+  final List<_Destination> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final Widget body;
+  final int unreadCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final profileIndex = destinations.indexWhere(
+      (destination) => destination.label == 'Profil',
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 56,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            const _BrandLogo(size: 34),
+            const SizedBox(width: 9),
+            const Expanded(
+              child: Text(
+                'SeiCycle',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (profileIndex != selectedIndex)
+            IconButton(
+              onPressed: () => onSelected(profileIndex),
+              tooltip: 'Buka profil',
+              icon: const Icon(Icons.person_outline_rounded, size: 26),
+            ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: body,
+      bottomNavigationBar: _MobileNavigation(
+        destinations: destinations,
+        selectedIndex: selectedIndex,
+        onSelected: onSelected,
+        unreadCount: unreadCount,
+      ),
+    );
+  }
+}
+
+class _MobileNavigation extends StatelessWidget {
+  const _MobileNavigation({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+    required this.unreadCount,
+  });
+
+  final List<_Destination> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final int unreadCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasOverflow = destinations.length > 5;
+    final visibleCount = hasOverflow ? 4 : destinations.length;
+    final navigationIndex = hasOverflow && selectedIndex >= visibleCount
+        ? visibleCount
+        : selectedIndex;
+
+    final navigation = DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: NavigationBar(
+        selectedIndex: navigationIndex,
+        onDestinationSelected: (index) {
+          if (!hasOverflow || index < visibleCount) {
+            onSelected(index);
+            return;
+          }
+          _showMore(context, visibleCount);
+        },
+        destinations: [
+          for (var index = 0; index < visibleCount; index++)
+            NavigationDestination(
+              icon: destinations[index].isBadged && unreadCount > 0
+                  ? Badge.count(
+                      count: unreadCount,
+                      child: Icon(destinations[index].icon),
+                    )
+                  : Icon(destinations[index].icon),
+              selectedIcon: destinations[index].isBadged && unreadCount > 0
+                  ? Badge.count(
+                      count: unreadCount,
+                      child: Icon(destinations[index].selectedIcon),
+                    )
+                  : Icon(destinations[index].selectedIcon),
+              label: destinations[index].label,
+            ),
+          if (hasOverflow)
+            const NavigationDestination(
+              icon: Icon(Icons.grid_view_outlined),
+              selectedIcon: Icon(Icons.grid_view_rounded),
+              label: 'Lainnya',
+            ),
+        ],
+      ),
+    );
+    return SafeArea(top: false, child: navigation);
+  }
+
+  Future<void> _showMore(BuildContext context, int startIndex) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (context) {
+        final mediaQuery = MediaQuery.of(context);
+        final maxSheetHeight = mediaQuery.size.height * 0.72;
+
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxSheetHeight),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              mediaQuery.padding.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                  child: Text(
+                    'Menu lainnya',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                for (
+                  var index = startIndex;
+                  index < destinations.length;
+                  index++
+                )
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: ListTile(
+                      selected: index == selectedIndex,
+                      selectedColor: AppColors.primaryGreen,
+                      selectedTileColor: AppColors.softGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      leading: Icon(
+                        index == selectedIndex
+                            ? destinations[index].selectedIcon
+                            : destinations[index].icon,
+                      ),
+                      title: Text(destinations[index].label),
+                      trailing: index == selectedIndex
+                          ? const Icon(Icons.check_rounded, size: 20)
+                          : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onSelected(index);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DesktopShell extends StatelessWidget {
+  const _DesktopShell({
+    required this.profile,
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+    required this.body,
+    required this.unreadCount,
+  });
+
+  final AppUser profile;
+  final List<_Destination> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final Widget body;
+  final int unreadCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = DateFormat('EEEE, d MMM yyyy', 'id_ID').format(DateTime.now());
+
+    return Scaffold(
+      body: Row(
+        children: [
+          SizedBox(
+            width: 248,
+            child: Material(
+              color: AppColors.surface,
+              child: SafeArea(
+                right: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 76,
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      color: AppColors.primaryGreen,
+                      child: const Row(
+                        children: [
+                          _BrandLogo(size: 44),
+                          SizedBox(width: 12),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SeiCycle',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                'Operasional Kebun Sei',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(18, 18, 18, 8),
+                      child: Text(
+                        'MENU UTAMA',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        itemCount: destinations.length,
+                        itemBuilder: (context, index) {
+                          final destination = destinations[index];
+                          final selected = index == selectedIndex;
+                          final showBadge =
+                              destination.isBadged && unreadCount > 0;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: ListTile(
+                              selected: selected,
+                              selectedColor: AppColors.primaryGreen,
+                              selectedTileColor: AppColors.softGreen,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              leading: showBadge
+                                  ? Badge.count(
+                                      count: unreadCount,
+                                      child: Icon(
+                                        selected
+                                            ? destination.selectedIcon
+                                            : destination.icon,
+                                        size: 21,
+                                      ),
+                                    )
+                                  : Icon(
+                                      selected
+                                          ? destination.selectedIcon
+                                          : destination.icon,
+                                      size: 21,
+                                    ),
+                              title: Text(
+                                destination.label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                              onTap: () => onSelected(index),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          _ProfileAvatar(profile: profile, radius: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  profile.roleLabel,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.success,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  height: 72,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(bottom: BorderSide(color: AppColors.border)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        destinations[selectedIndex].label,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.softGreen,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_outlined,
+                              size: 14,
+                              color: AppColors.primaryGreen,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _capitalize(date),
+                              style: const TextStyle(
+                                color: AppColors.primaryGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _ProfileAvatar(profile: profile, radius: 18),
+                    ],
+                  ),
+                ),
+                Expanded(child: body),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BrandLogo extends StatelessWidget {
+  const _BrandLogo({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(5),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+      child: Image.asset(
+        'lib/assets/logo.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) =>
+            const Icon(Icons.eco_rounded, color: AppColors.primaryGreen),
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.profile, required this.radius});
+
+  final AppUser profile;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.softGreen,
+      foregroundColor: AppColors.primaryGreen,
+      backgroundImage: profile.photoUrl.isEmpty
+          ? null
+          : NetworkImage(profile.photoUrl),
+      child: profile.photoUrl.isEmpty
+          ? Icon(Icons.person_rounded, size: radius)
+          : null,
+    );
+  }
+}
+
+String _capitalize(String value) =>
+    value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';

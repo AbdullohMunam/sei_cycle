@@ -1,0 +1,571 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasProfile() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function activeUser() {
+      return signedIn()
+        && hasProfile()
+        && (
+          (
+            !('isActive' in currentUser().data.keys())
+            || currentUser().data.isActive != false
+          )
+          && (
+            !('is_active' in currentUser().data.keys())
+            || currentUser().data.is_active != false
+          )
+        );
+    }
+
+    function canViewAppData() {
+      return activeUser();
+    }
+
+    function profileRole() {
+      return activeUser() ? currentUser().data.role : null;
+    }
+
+    function effectiveProfileRole() {
+      return isAdmin()
+        ? 'admin'
+        : isOperatorLapangan()
+          ? 'operator_lapangan'
+          : isOperatorKeuangan()
+            ? 'operator_keuangan'
+            : profileRole();
+    }
+
+    function hasRole(role) {
+      return activeUser() && profileRole() == role;
+    }
+
+    function hasAnyRole(roles) {
+      return activeUser() && profileRole() in roles;
+    }
+
+    /*
+      Role utama branch backend:
+      - admin
+      - operator_lapangan
+      - operator_keuangan
+
+      Legacy dibaca agar data lama tidak langsung rusak:
+      - operator
+      - mitra
+      - peserta_edukasi
+    */
+
+    function isAdmin() {
+      return hasAnyRole([
+        'admin',
+        'Admin',
+        'ADMIN',
+        ' admin',
+        'admin ',
+        ' admin '
+      ]);
+    }
+
+    function isOperatorLapangan() {
+      return hasAnyRole([
+        'operator_lapangan',
+        'operator'
+      ]);
+    }
+
+    function isOperatorKeuangan() {
+      return hasRole('operator_keuangan');
+    }
+
+    function isRoleTarget(role) {
+      return role == 'all' || supportedRole(role);
+    }
+
+    function canManageOperations() {
+      return isAdmin() || isOperatorLapangan();
+    }
+
+    function canManageFinance() {
+      return isAdmin() || isOperatorKeuangan();
+    }
+
+    function supportedRole(role) {
+      return role in [
+        'admin',
+        'operator_lapangan',
+        'operator_keuangan',
+        'operator',
+        'mitra',
+        'peserta_edukasi'
+      ];
+    }
+
+    function createsOwnDocument(documentId) {
+      return request.resource.data.id == documentId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.isDeleted == false;
+    }
+
+    function updatesExistingDocument() {
+      return request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
+    function validFinanceTransaction(documentId, data) {
+      return data.keys().hasOnly([
+          'id',
+          'type',
+          'category',
+          'amount',
+          'date',
+          'description',
+          'notes',
+          'paymentMethod',
+          'moduleType',
+          'createdAt',
+          'updatedAt',
+          'createdBy',
+          'updatedBy',
+          'isDeleted',
+          'isSampleData',
+          'sampleVersion'
+        ])
+        && data.id == documentId
+        && data.type in ['income', 'expense']
+        && data.category is string
+        && data.category.size() > 0
+        && data.amount is number
+        && data.amount > 0
+        && data.date is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.isDeleted is bool
+        && (!('isSampleData' in data.keys()) || data.isSampleData is bool)
+        && (!('sampleVersion' in data.keys()) || data.sampleVersion is string)
+        && (!('description' in data.keys()) || data.description is string)
+        && (!('notes' in data.keys()) || data.notes is string)
+        && (!('paymentMethod' in data.keys()) || data.paymentMethod is string)
+        && (!('moduleType' in data.keys()) || data.moduleType is string);
+    }
+
+    function userCanUpdateOwnProfile(uid) {
+      return signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.id == uid
+
+        // user biasa tidak boleh mengubah role dan status aktif
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isActive == resource.data.isActive
+
+        // field profil ringan yang boleh diubah sendiri
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'id',
+          'uid',
+          'name',
+          'email',
+          'photoUrl',
+          'fcmToken',
+          'fcmTokenUpdatedAt',
+          'updatedAt'
+        ]);
+    }
+
+    function canReadNotification(data) {
+      return activeUser() && (
+        isAdmin()
+        || data.userId == request.auth.uid
+        || data.targetRole == 'all'
+        || data.targetRole == effectiveProfileRole()
+      );
+    }
+
+    function validNotificationBase(documentId, data) {
+      return data.keys().hasOnly([
+          'id',
+          'title',
+          'body',
+          'type',
+          'targetRole',
+          'userId',
+          'relatedCollection',
+          'relatedId',
+          'isRead',
+          'readAt',
+          'createdAt',
+          'updatedAt',
+          'createdBy',
+          'updatedBy',
+          'scheduledAt',
+          'isDeleted',
+          'isSampleData',
+          'sampleVersion'
+        ])
+        && data.id == documentId
+        && data.title is string
+        && data.title.size() > 0
+        && data.body is string
+        && data.body.size() > 0
+        && data.type in [
+          'low_stock',
+          'schedule_overdue',
+          'production_reminder',
+          'system'
+        ]
+        && data.targetRole is string
+        && isRoleTarget(data.targetRole)
+        && data.userId is string
+        && data.isRead is bool
+        && data.isRead == false
+        && data.createdAt is timestamp
+        && data.isDeleted is bool
+        && data.isDeleted == false
+        && (!('updatedAt' in data.keys()) || data.updatedAt is timestamp)
+        && (!('createdBy' in data.keys()) || data.createdBy is string)
+        && (!('updatedBy' in data.keys()) || data.updatedBy is string)
+        && (!('isSampleData' in data.keys()) || data.isSampleData is bool)
+        && (!('sampleVersion' in data.keys()) || data.sampleVersion is string)
+        && (!('relatedCollection' in data.keys()) || data.relatedCollection is string)
+        && (!('relatedId' in data.keys()) || data.relatedId is string)
+        && (!('scheduledAt' in data.keys()) || data.scheduledAt is timestamp);
+    }
+
+    function userCanCreateOwnNotification(documentId) {
+      return activeUser()
+        && validNotificationBase(documentId, request.resource.data)
+        && request.resource.data.type in [
+          'low_stock',
+          'schedule_overdue',
+          'production_reminder'
+        ]
+        && request.resource.data.userId == request.auth.uid
+        && isRoleTarget(request.resource.data.targetRole);
+    }
+
+    function userCanRefreshOwnNotification() {
+      return activeUser()
+        && validNotificationBase(resource.data.id, request.resource.data)
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && isRoleTarget(request.resource.data.targetRole)
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.type in [
+          'low_stock',
+          'schedule_overdue',
+          'production_reminder'
+        ];
+    }
+
+    function adminCanCreateSystemNotification(documentId) {
+      return isAdmin()
+        && validNotificationBase(documentId, request.resource.data)
+        && request.resource.data.type == 'system';
+    }
+
+    /*
+      USERS
+      Semua user login bisa baca profil untuk tampilan/role app.
+      User biasa hanya bisa buat dan edit profil sendiri.
+      Admin bisa tambah/edit/hapus semua user.
+    */
+    match /users/{uid} {
+      allow create: if (
+        signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.id == uid
+
+        // default sesuai rules branch backend yang kamu kirim
+        && request.resource.data.role == 'operator_lapangan'
+        && request.resource.data.isActive == true
+      ) || (
+        isAdmin()
+        && request.resource.data.uid == uid
+        && request.resource.data.id == uid
+        && supportedRole(request.resource.data.role)
+      );
+
+      allow read: if signedIn();
+
+      allow update: if (
+        isAdmin()
+        && supportedRole(request.resource.data.role)
+      ) || userCanUpdateOwnProfile(uid);
+
+      allow delete: if isAdmin();
+    }
+
+    /*
+      MASTER MODUL KEBUN
+      Semua user login bisa lihat.
+      Hanya admin yang boleh kelola.
+    */
+    match /farm_modules/{moduleId} {
+      allow read: if canViewAppData();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /*
+      LOGBOOK OPERASIONAL
+      Semua user login bisa lihat tampilan.
+      Admin dan operator lapangan bisa tambah/edit.
+      Hapus permanen hanya admin.
+    */
+    match /logbooks/{logbookId} {
+      allow read: if canViewAppData();
+
+      allow create: if canManageOperations()
+        && (
+          isAdmin()
+          || createsOwnDocument(logbookId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageOperations()
+          && updatesExistingDocument()
+
+          // operator lapangan tidak boleh soft delete
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    /*
+      INVENTORY
+      Collection branch backend: inventory
+      Bukan inventory_items.
+    */
+    match /inventory/{itemId} {
+      allow read: if canViewAppData();
+
+      allow create: if canManageOperations()
+        && (
+          isAdmin()
+          || createsOwnDocument(itemId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageOperations()
+          && updatesExistingDocument()
+
+          // operator lapangan boleh edit stok,
+          // tapi tidak boleh soft delete data
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    /*
+      INVENTORY TRANSACTIONS
+      Histori perubahan stok dari logbook.
+    */
+    match /inventory_transactions/{transactionId} {
+      allow read: if canViewAppData();
+      allow create: if isAdmin()
+        || (
+          canManageOperations()
+          && request.resource.data.id == transactionId
+          && request.resource.data.createdBy == request.auth.uid
+        );
+      allow update: if canManageOperations()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isAdmin();
+    }
+
+    /*
+      PRODUCTION RESULTS
+      Hasil produksi/panen yang berasal dari logbook.
+    */
+    match /production_results/{resultId} {
+      allow read: if canViewAppData();
+      allow create: if isAdmin()
+        || (
+          canManageOperations()
+          && request.resource.data.id == resultId
+          && request.resource.data.createdBy == request.auth.uid
+        );
+      allow update, delete: if isAdmin();
+    }
+
+    /*
+      CIRCULAR FLOWS
+      Data aliran nutrisi dashboard. Semua user aktif bisa baca,
+      admin/operator lapangan bisa tambah data operasional.
+    */
+    match /circular_flows/{flowId} {
+      allow read: if canViewAppData();
+      allow create: if isAdmin()
+        || (
+          canManageOperations()
+          && request.resource.data.id == flowId
+        );
+      allow update, delete: if isAdmin();
+    }
+
+    /*
+      SCHEDULES / KALENDER OPERASIONAL
+    */
+    match /schedules/{scheduleId} {
+      allow read: if canViewAppData();
+
+      allow create: if canManageOperations()
+        && (
+          isAdmin()
+          || createsOwnDocument(scheduleId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageOperations()
+          && updatesExistingDocument()
+
+          // operator lapangan boleh update status jadwal,
+          // tapi tidak boleh soft delete
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    /*
+      EDUKASI
+      Semua user login bisa lihat tampilan edukasi.
+      Hanya admin yang bisa lihat dan kelola semua status.
+    */
+    match /education_contents/{contentId} {
+      allow read: if canViewAppData();
+
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /*
+      FINANCE
+      Collection branch backend: finance_transactions
+      Semua user login bisa lihat tampilan.
+      Admin dan operator keuangan bisa tambah/edit/soft delete/delete.
+      Operator lapangan hanya read-only lewat route yang tersedia.
+    */
+    match /finance_transactions/{transactionId} {
+      allow read: if canViewAppData();
+
+      allow create: if canManageFinance()
+        && validFinanceTransaction(transactionId, request.resource.data)
+        && (
+          isAdmin()
+          || createsOwnDocument(transactionId)
+        );
+
+      allow update: if canManageFinance()
+        && updatesExistingDocument()
+        && validFinanceTransaction(transactionId, request.resource.data);
+
+      allow delete: if canManageFinance();
+    }
+
+    /*
+      NOTIFICATIONS
+      Semua user hanya baca notifikasi yang memang untuk dirinya/role-nya.
+      Admin bisa baca dan hapus semua.
+    */
+    match /notifications/{notificationId} {
+      allow read: if canViewAppData();
+
+      allow create: if isAdmin()
+        || userCanCreateOwnNotification(notificationId)
+        || adminCanCreateSystemNotification(notificationId);
+
+      allow update: if (
+          canReadNotification(resource.data)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'isRead',
+            'readAt'
+          ])
+        ) || userCanRefreshOwnNotification();
+
+      allow update: if canReadNotification(resource.data)
+        && (
+          isAdmin()
+          || resource.data.userId == request.auth.uid
+        )
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'isDeleted',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && request.resource.data.isDeleted == true
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isAdmin();
+    }
+
+    /*
+      REPORT METADATA
+      Metadata laporan/export client.
+      Admin dan operator keuangan boleh kelola.
+    */
+    match /report_metadata/{reportId} {
+      allow read: if canViewAppData();
+
+      allow create: if canManageFinance()
+        && (
+          isAdmin()
+          || createsOwnDocument(reportId)
+        );
+
+      allow update: if isAdmin()
+        || (
+          canManageFinance()
+          && updatesExistingDocument()
+          && request.resource.data.isDeleted == resource.data.isDeleted
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    /*
+      RECOMMENDATIONS
+      Hasil rule-based recommendation default dibuat on-demand di client.
+      Collection ini disiapkan untuk snapshot rekomendasi manual/admin-side.
+    */
+    match /recommendations/{recommendationId} {
+      allow read: if canViewAppData();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /*
+      Collection lain ditutup.
+      Jadi kalau ada typo nama collection, langsung ketahuan permission-denied.
+    */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

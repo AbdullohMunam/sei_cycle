@@ -1,205 +1,331 @@
-<div align="center">
-  <img src="reference/kebun-sei-logo.png" alt="Kebun Sei Logo" width="120" />
-  <h1>SeiCycle</h1>
-  <p><strong>Smart Integrated Farming System</strong></p>
-  <p>Platform manajemen pertanian-peternakan terintegrasi berbasis siklus nutrisi berkelanjutan untuk <strong>Kebun Sei</strong>, Pakisaji – Malang.</p>
+# SeiCycle - MVP Flutter + Firebase
 
-  <p>
-    <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"/>
-    <img src="https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white" alt="Dart"/>
-    <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-green" alt="Platform"/>
-    <img src="https://img.shields.io/badge/Status-MVP-orange" alt="Status"/>
-  </p>
-</div>
+SeiCycle adalah aplikasi operasional Kebun Sei untuk mencatat aktivitas Ayam
+Kampung, Maggot BSF, Cacing Tanah, Lele, Tanaman, inventaris, jadwal, edukasi,
+dan keuangan sederhana.
 
----
+## Arsitektur MVP
 
-## 🌿 Tentang Proyek
+MVP menggunakan arsitektur **full Firebase direct dari Flutter**:
 
-**SeiCycle** adalah aplikasi manajemen pertanian-peternakan berbasis data untuk **Kebun Sei** — ekosistem sirkular tertutup yang mengintegrasikan:
-
-```
-Limbah Dapur → Maggot BSF → Pakan Lele → Air Kolam
-     ↑                                        ↓
-Tanaman Pangan ← Kascing ← Cacing Tanah ←────┘
-     ↓
-Pakan Ayam → Kotoran Ayam → Media Maggot → (ulang)
+```text
+Flutter app
+  - Firebase Authentication
+  - Cloud Firestore
+  - Firebase Cloud Messaging untuk permission/token/client readiness
+  - Flutter local notification boleh dipakai untuk reminder lokal client-side
 ```
 
-Zero waste · Efisiensi pakan 60% · Pupuk mandiri 100%
+Backend Express lama sudah dihapus dan tidak digunakan pada MVP. Aplikasi tidak
+memerlukan hosting API Node.js, server Express, seeders Node.js, Firebase Admin
+SDK, atau `serviceAccountKey.json`. Seluruh akses data dilakukan melalui Firebase
+SDK dari Flutter dan diamankan oleh `firestore.rules`.
 
----
+Repo tidak menggunakan Firebase Storage, Cloud Functions, atau backend server-side.
+Materi video, SOP, atau artikel menggunakan field `external_url`, dan FCM
+dibatasi untuk request permission serta token readiness dari client.
 
-## ✨ Fitur Utama (MVP)
+Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACKEND.md).
+Checklist final brief tersedia di
+[docs/FEATURE_COMPLETION_CHECKLIST.md](docs/FEATURE_COMPLETION_CHECKLIST.md).
 
-### 🏠 Dashboard Terintegrasi
+## Fitur yang Disiapkan
 
-<div align="center">
-<table>
-  <tr>
-    <td align="center">
-      <img src="screenshots/Dashboard1.png" width="200"/>
-      <br/><sub>Ringkasan Operasional & Quick Stats</sub>
-    </td>
-    <td align="center">
-      <img src="screenshots/Dashboard2.png" width="200"/>
-      <br/><sub>Aliran Nutrisi, Aktivitas Harian & Omset</sub>
-    </td>
-  </tr>
-</table>
-</div>
+- Login email/password dan Google.
+- Registrasi akun dan pembuatan otomatis `users/{uid}`.
+- Profil pengguna dan role `admin`, `operator_lapangan`, atau `operator_keuangan`.
+- Dashboard dari Firestore: logbook hari ini, stok rendah, jadwal pending,
+  ringkasan keuangan, laba/rugi, dan grafik aktivitas 7 hari.
+- Logbook tambah/edit sesuai role, hapus khusus admin, serta filter modul dan tanggal.
+- Inventaris tambah/edit sesuai role, hapus khusus admin, dan indikator `current_stock <= min_stock`.
+- Jadwal tambah/edit sesuai role, hapus khusus admin, filter tanggal, serta status `pending`, `done`, dan `skipped`.
+- Edukasi artikel/video/SOP dengan teks atau URL eksternal, dikelola admin.
+- Keuangan pemasukan, pengeluaran, total, dan laba/rugi sederhana; hapus transaksi khusus admin.
+- Seed lima dokumen `farm_modules` dari menu Profil admin.
+- Seed data sampel demo Firestore dari menu Profil admin.
+- Firestore Security Rules berbasis autentikasi dan role.
+- Notifikasi free-mode: inbox Firestore, local reminder client-side, dan ID
+  deterministik untuk alert stok rendah/jadwal overdue agar tidak spam duplicate.
+- Report PDF/Excel dibuat lokal dari data Firestore dan aman untuk data kosong.
+- Rekomendasi rule-based tetap menghasilkan fallback aman ketika data masih minim.
 
-- **Hero banner** dengan logo Kebun Sei, lokasi & luas lahan
-- **Quick stats grid** responsif: 1.050 ekor ternak · 50 kg limbah/minggu · 85 telur/hari · Rp 20 jt/bln
-- **Diagram aliran nutrisi** — closed-loop system visual (Limbah → Maggot → Lele → Cacing → Tanaman)
-- **Timeline aktivitas harian** dengan status selesai/belum per jam
-- **Rincian omset bulanan** per komoditas dengan progress bar berwarna
+## Checklist Brief SeiCycle
 
----
+### Selesai pada MVP saat ini
 
-### 📒 Logbook Operasional (5 Modul)
+- [x] Firebase Authentication email/password.
+- [x] Google Sign-In melalui Firebase Authentication.
+- [x] Pembuatan dan pembacaan profil `users/{uid}`.
+- [x] Role brief `admin`, `operator_lapangan`, dan `operator_keuangan`.
+- [x] Dashboard ringkasan dari Cloud Firestore.
+- [x] Logbook operasional dengan tambah, edit, hapus admin, dan filter.
+- [x] Inventaris dengan tambah, edit, hapus admin, dan indikator stok rendah.
+- [x] Jadwal dengan tambah, edit, hapus admin, filter tanggal, dan update status.
+- [x] Edukasi artikel/video/SOP berbasis teks dan URL eksternal, dengan hapus admin.
+- [x] Keuangan admin/operator keuangan untuk income, expense, total, laba/rugi sederhana, dan hapus admin.
+- [x] Seed `farm_modules` dari UI Profil admin, bukan seeder Node.js.
+- [x] Seed data sampel demo dari UI Profil admin, bukan seeder Node.js.
+- [x] Firestore schema, ERD, rules, dan konfigurasi deploy rules.
+- [x] FCM client readiness untuk request permission dan ambil token.
+- [x] Secret hygiene untuk `.env`, service account, key, dan `node_modules/`.
 
-<div align="center">
-<table>
-  <tr>
-    <td align="center">
-      <img src="screenshots/Logbook1.png" width="200"/>
-      <br/><sub>Modul Ayam – Input Harian & Nutrisi</sub>
-    </td>
-    <td align="center">
-      <img src="screenshots/Loogbook2.png" width="200"/>
-      <br/><sub>Modul Tanaman – Data Tanam & Pertumbuhan</sub>
-    </td>
-  </tr>
-</table>
-</div>
+### Belum selesai atau sengaja ditunda
 
-| Modul | Fitur Utama |
-|---|---|
-| 🐔 **Ayam** | Populasi, konsumsi pakan, produksi telur, mortalitas slider, catatan kesehatan |
-| 🐛 **Maggot BSF** | Volume limbah, fase larva slider + badge (Instar/Prepupa/Panen), est. panen |
-| 🪱 **Cacing** | Bibit, kelembaban, jadwal pakan, est. kascing |
-| 🌿 **Tanaman** | Jenis, blok, tanggal tanam, tinggi/daun, pupuk kascing, jadwal berikutnya |
-| 🐟 **Lele** | Tebar benih, survival rate, pakan maggot, pH & suhu kolam |
+- [ ] Firebase Web, iOS, macOS, Windows, atau Linux options dari FlutterFire.
+- [x] Local notification reminder client-side/free-mode.
+- [x] PDF/Excel report client-side.
+- [x] Rule-based recommendation.
+- [ ] Pengiriman push notification terjadwal atau server-side.
+- [ ] Upload file atau gambar dengan Firebase Storage.
+- [ ] Cloud Functions atau backend job server-side.
+- [ ] Backend Express/API/server hosting.
+- [ ] App Check dan hardening produksi lanjutan.
 
-Form otomatis **2 kolom** di layar lebar, **1 kolom** di mobile. Tombol **Simpan Catatan** & **Lihat Riwayat** di setiap modul.
+## Prasyarat
 
----
+- Flutter stable dan Dart yang kompatibel dengan `pubspec.yaml`.
+- Project Firebase.
+- Firebase CLI untuk deploy rules.
+- FlutterFire CLI untuk menghasilkan konfigurasi platform.
 
-### 📚 Edukasi & Tutorial
+## Setup Firebase
 
-<div align="center">
-  <img src="screenshots/Edukasi.png" width="200"/>
-</div>
+### 1. Buat dan daftarkan aplikasi Firebase
 
-Feed artikel dan video tutorial seputar operasional Kebun Sei:
-- 🔍 **Search bar** real-time (filter judul + konten)
-- 🏷️ **Filter chips**: Semua · Maggot BSF · Cacing Tanah · Ayam Kampung · Lele · Tanaman
-- ▶️ **Video posts** dengan play button overlay di thumbnail
-- 🖼️ Thumbnail foto nyata per topik (bukan placeholder)
-- 📱 Single-column di mobile · 2-column grid di desktop
+1. Buat atau buka project di [Firebase Console](https://console.firebase.google.com/).
+2. Daftarkan aplikasi Android dengan package name `id.seicycle.app`.
+3. Unduh `google-services.json` dan simpan lokal di:
 
----
+   ```text
+   android/app/google-services.json
+   ```
 
-### 🔔 Notifikasi & Pengingat
+File tersebut di-ignore agar konfigurasi lokal tidak ikut commit.
 
-<div align="center">
-  <img src="screenshots/Notifikasi.png" width="200"/>
-</div>
+### 2. Konfigurasi FlutterFire
 
-- **5 Jadwal Pakan** — cacing, ayam pagi/sore, lele pagi/sore
-- **2 Peringatan** — overstock limbah, kelembaban cacing rendah
-- **3 Estimasi Panen Optimal** — maggot, cacing, target telur harian
+Install FlutterFire CLI lalu jalankan konfigurasi dari root project:
 
----
-
-## 📱 Responsive Design
-
-| Layar | Layout |
-|---|---|
-| **Mobile** `< 768px` | Bottom Navigation Bar (4 tab) + single/double column |
-| **Desktop/Web** `≥ 768px` | Side Navigation (240px sidebar) + expanding grid |
-
----
-
-## 🛠 Tech Stack
-
-| Layer | Teknologi |
-|---|---|
-| Framework | Flutter 3.x (Dart) |
-| State | `StatefulWidget` + `setState` |
-| Navigation | `LayoutBuilder` → `NavigationBar` / Custom Sidebar |
-| Routing | Tab-based (`DefaultTabController`) |
-| Assets | Material Icons + PNG lokal |
-| Platform | Android, iOS, Web |
-
----
-
-## 🎨 Design System
-
-| Token | Nilai |
-|---|---|
-| Primary Green | `#2D6A27` (dari logo Kebun Sei) |
-| Background | `#F7F5F0` — off-white / krem organik |
-| Card | `#FFFFFF` + `elevation: 2` |
-| Border radius | `16px` |
-| Status colors | Success `#10B981` · Warning `#F59E0B` · Info `#3B82F6` |
-
----
-
-## 🗂 Struktur Proyek
-
-```
-lib/
-├── main.dart
-├── theme/app_theme.dart              # AppColors, ThemeData
-├── models/
-│   ├── app_data.dart                 # Data dashboard & notifikasi
-│   └── edukasi_data.dart             # Data 8 post edukasi
-├── screens/
-│   ├── dashboard_screen.dart
-│   ├── logbook_screen.dart           # 5-modul TabBar
-│   ├── edukasi_screen.dart           # Search, filter, feed responsif
-│   └── notifikasi_screen.dart
-└── widgets/
-    ├── common_widgets.dart           # StatCard, NutrientFlowCard, AlertTile
-    └── responsive_shell.dart         # 4-tab nav: mobile ↔ desktop
+```bash
+dart pub global activate flutterfire_cli
+flutterfire configure
 ```
 
----
+Perintah ini menghasilkan atau memperbarui `lib/firebase_options.dart`.
+Konfigurasi yang tersimpan saat ini hanya mencakup Android dari
+`google-services.json`. Jalankan `flutterfire configure` sebelum menjalankan
+Web, iOS, macOS, atau desktop.
 
-## 🚀 Cara Menjalankan
+`main.dart` sudah menjalankan:
+
+```dart
+WidgetsFlutterBinding.ensureInitialized();
+await Firebase.initializeApp(
+  options: DefaultFirebaseOptions.currentPlatform,
+);
+```
+
+### 3. Aktifkan Authentication
+
+Di Firebase Console buka **Authentication > Sign-in method**:
+
+1. Aktifkan **Email/Password**.
+2. Aktifkan **Google** dan pilih support email.
+3. Untuk Google Sign-In Android, tambahkan fingerprint SHA-1 dan SHA-256 pada
+   Firebase project settings, lalu unduh ulang `google-services.json`.
+
+### 4. Buat Cloud Firestore
+
+Di Firebase Console buka **Firestore Database**, buat database, lalu pilih
+region yang sesuai. Deploy rules dari repo:
+
+```bash
+firebase login
+firebase use --add
+firebase deploy --only firestore:rules
+```
+
+Rules MVP berada di `firestore.rules`.
+
+### 5. Buat farm modules
+
+Login menggunakan akun admin, buka **Profil**, lalu tekan **Seed** pada bagian
+`farm_modules`. Dokumen yang dibuat:
+
+- `ayam_kampung`
+- `maggot_bsf`
+- `cacing_tanah`
+- `lele`
+- `tanaman`
+
+Seeder ini berjalan dari Flutter client menggunakan akun admin dan Firestore
+Rules. Tidak ada script seeder Node.js atau Firebase Admin SDK.
+
+## Collection Firestore
+
+| Collection | Document ID | Fungsi |
+|---|---|---|
+| `users` | UID Firebase Auth | Profil dan role pengguna |
+| `farm_modules` | ID modul tetap | Master lima modul Kebun Sei |
+| `logbooks` | UUID | Catatan aktivitas operasional |
+| `inventory` | UUID | Stok, item key, dan batas minimum |
+| `inventory_transactions` | UUID | Histori perubahan stok dari Logbook |
+| `production_results` | UUID | Hasil produksi atau panen dari Logbook |
+| `circular_flows` | ID aliran tetap/UUID | Aliran nutrisi antar modul untuk Dashboard |
+| `schedules` | UUID | Kalender dan status pekerjaan |
+| `education_contents` | UUID | Artikel, video URL, dan SOP |
+| `finance_transactions` | UUID | Pemasukan dan pengeluaran admin/operator keuangan |
+| `notifications` | Deterministik/UUID | Inbox notifikasi free-mode |
+| `report_metadata` | UUID | Metadata laporan/export client |
+| `recommendations` | UUID | Snapshot rekomendasi opsional |
+
+Detail field tersedia di [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md).
+Panduan data sampel demo tersedia di [docs/SAMPLE_DATA.md](docs/SAMPLE_DATA.md).
+
+## Data Demo, Logbook, dan Dashboard
+
+Seeder demo berjalan dari aplikasi Flutter, bukan Node.js, Firebase Admin SDK,
+atau credential server. Login sebagai admin aktif, buka **Profil**, lalu tekan
+**Seed sampel**. Seeder membuat data sample untuk:
+
+- `farm_modules`
+- `logbooks`
+- `inventory`
+- `inventory_transactions`
+- `production_results`
+- `circular_flows`
+- `schedules`
+- `finance_transactions`
+- `notifications`
+
+Alur data Logbook:
+
+```text
+Logbook form
+  -> logbooks
+  -> inventory update
+  -> inventory_transactions
+  -> production_results
+  -> notifications low_stock
+```
+
+Alur data Dashboard:
+
+```text
+Dashboard
+  -> farm_modules
+  -> logbooks
+  -> inventory
+  -> schedules
+  -> finance_transactions
+  -> circular_flows
+  -> production_results
+```
+
+Deploy rules dan indexes:
+
+```bash
+firebase deploy --only firestore:rules
+firebase deploy --only firestore:indexes
+```
+
+Catatan scope MVP: Firebase Storage belum dipakai, rekomendasi AI masih
+rule-based/placeholder, dan credential seperti `.env`, `serviceAccountKey.json`,
+token Firebase, atau private key tidak boleh di-commit.
+
+## Role dan Akses
+
+| Role | Akses |
+|---|---|
+| `admin` | Semua fitur, seluruh data, dan aksi hapus data utama |
+| `operator_lapangan` | Bisa melihat semua menu; tambah/edit logbook operasional, inventaris, dan jadwal |
+| `operator_keuangan` | Bisa melihat semua menu; tambah/edit pemasukan/pengeluaran dan laporan keuangan |
+| `operator` | Legacy: dipetakan sebagai `operator_lapangan` |
+| `mitra` / `peserta_edukasi` | Legacy: bisa melihat semua menu, tetapi read-only |
+
+Semua akun baru memiliki role `operator_lapangan`. Untuk MVP, ubah admin atau operator keuangan secara manual:
+
+1. Buka **Firestore Database > users**.
+2. Pilih dokumen dengan ID UID pengguna.
+3. Ubah field `role` menjadi `admin`, `operator_lapangan`, atau `operator_keuangan`.
+4. Pastikan `isActive` atau `is_active` bernilai `true`.
+
+UI role membantu pengalaman pengguna: semua user aktif bisa membuka semua menu,
+tetapi tombol tambah/edit hanya muncul sesuai akses role dan tombol hapus hanya
+muncul untuk admin. Otorisasi final tetap dilakukan oleh Firestore Security
+Rules. `finance_transactions` bisa dibaca user aktif untuk tampilan dashboard/laporan,
+tetapi hanya admin dan operator keuangan yang boleh menambah atau mengubah
+transaksi; hapus transaksi dibatasi untuk admin.
+
+## Menjalankan Aplikasi
 
 ```bash
 flutter pub get
-
-flutter run -d chrome           # Web browser
-flutter run -d web-server \
-  --web-hostname=0.0.0.0 \
-  --web-port=8080               # Web server (LAN)
-flutter run                     # Android / iOS emulator
+flutter analyze --no-pub
+flutter test --no-pub --reporter expanded
+flutter run
 ```
 
-```bash
-flutter analyze   # → No issues found ✅
+Verifikasi final branch ini pada 28 Juni 2026:
+
+- `flutter pub get` berhasil.
+- `flutter analyze --no-pub` tidak menemukan error fatal; tersisa 5 info/lint
+  non-blocking terkait deprecated `Share.shareXFiles` dan enum
+  `full_summary`.
+- `flutter test --no-pub --reporter expanded` berhasil setelah patch final.
+
+Untuk Android, pastikan `android/app/google-services.json` tersedia. Untuk Web
+atau platform lain, jalankan `flutterfire configure` terlebih dahulu.
+
+## Struktur Utama
+
+```text
+lib/
+  app/
+    app.dart
+    app_shell.dart
+  core/
+    constants/
+    services/
+    utils/
+    widgets/
+  features/
+    auth/
+    dashboard/
+    farm_modules/
+    logbook/
+    inventory/
+    schedule/
+    education/
+    finance/
+    profile/
+docs/
+  BACKEND.md
+  ERD.md
+  FEATURE_COMPLETION_CHECKLIST.md
+  FIRESTORE_SCHEMA.md
 ```
 
----
+## Keamanan Credential
 
-## 👥 Tim Kebun Sei
+Jangan commit credential admin Firebase atau private key. `.gitignore`
+mencakup:
 
-| Nama | Peran |
-|---|---|
-| **Irsal Fauzan Alfarizi** | Founder & Manajer Umum |
-| **Fiki Rahmat Dani** | Manajer Keuangan & Strategi Bisnis |
-| **Fredi Irawan** | Manajer Pemasaran & Operasional |
-| **Raphael Gregory Sosiawan** | Manajer Produksi & Lapangan |
-| **Abdulloh Mun'am** | Manajer IT & Digitalisasi |
+```text
+serviceAccountKey.json
+.env
+*.pem
+*.key
+node_modules/
+```
 
-> Institut Teknologi dan Bisnis Asia Malang — Program P2MW 2025
+Firebase Web/Android API key pada file konfigurasi client bukan private admin
+credential; keamanan data tetap harus bergantung pada Authentication,
+authorized domains, App Check bila diperlukan, dan Firestore Rules.
 
----
+## Ditunda Setelah MVP
 
-<div align="center">
-  <sub>Dibuat dengan ❤️ untuk pertanian berkelanjutan &nbsp;·&nbsp; Kebun Sei © 2025</sub>
-</div>
+- Backend Express/API sendiri.
+- Cloud Functions dan backend scheduler.
+- Upload media lewat Firebase Storage.
+- Pengiriman FCM push notification server-side jika belum diperlukan.
