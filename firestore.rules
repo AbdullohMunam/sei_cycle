@@ -101,6 +101,41 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
     }
 
+    function validFinanceTransaction(documentId, data) {
+      return data.keys().hasOnly([
+          'id',
+          'type',
+          'category',
+          'amount',
+          'date',
+          'description',
+          'notes',
+          'paymentMethod',
+          'moduleType',
+          'createdAt',
+          'updatedAt',
+          'createdBy',
+          'updatedBy',
+          'isDeleted'
+        ])
+        && data.id == documentId
+        && data.type in ['income', 'expense']
+        && data.category is string
+        && data.category.size() > 0
+        && data.amount is number
+        && data.amount > 0
+        && data.date is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.isDeleted is bool
+        && (!('description' in data.keys()) || data.description is string)
+        && (!('notes' in data.keys()) || data.notes is string)
+        && (!('paymentMethod' in data.keys()) || data.paymentMethod is string)
+        && (!('moduleType' in data.keys()) || data.moduleType is string);
+    }
+
     function userCanUpdateOwnProfile(uid) {
       return signedIn()
         && request.auth.uid == uid
@@ -273,28 +308,24 @@ service cloud.firestore {
       FINANCE
       Collection branch backend: finance_transactions
       Semua user aktif bisa lihat tampilan.
-      Admin dan operator keuangan bisa tambah/edit.
-      Soft delete dan delete hanya admin.
+      Admin dan operator keuangan bisa tambah/edit/soft delete/delete.
+      Operator lapangan hanya read-only lewat route yang tersedia.
     */
     match /finance_transactions/{transactionId} {
       allow read: if activeUser();
 
       allow create: if canManageFinance()
+        && validFinanceTransaction(transactionId, request.resource.data)
         && (
           isAdmin()
           || createsOwnDocument(transactionId)
         );
 
-      allow update: if isAdmin()
-        || (
-          canManageFinance()
-          && updatesExistingDocument()
+      allow update: if canManageFinance()
+        && updatesExistingDocument()
+        && validFinanceTransaction(transactionId, request.resource.data);
 
-          // operator keuangan tidak boleh soft delete
-          && request.resource.data.isDeleted == resource.data.isDeleted
-        );
-
-      allow delete: if isAdmin();
+      allow delete: if canManageFinance();
     }
 
     /*

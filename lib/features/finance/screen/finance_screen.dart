@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/farm_modules.dart';
+
 import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/operation_feedback.dart';
@@ -44,6 +46,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
         amount: value.amount,
         date: value.date,
         note: value.note,
+        paymentMethod: value.paymentMethod,
+        moduleType: value.moduleType,
         userId: widget.profile.uid,
       ),
       successMessage: record == null
@@ -85,19 +89,14 @@ class _FinanceScreenState extends State<FinanceScreen> {
           final state = asyncSnapshotState(snapshot);
           if (state != null) return state;
           final records = snapshot.requireData;
-          final income = records
-              .where((record) => record.type == 'income')
-              .fold<double>(0, (total, record) => total + record.amount);
-          final expense = records
-              .where((record) => record.type == 'expense')
-              .fold<double>(0, (total, record) => total + record.amount);
+          final summary = _service.monthlyProfitLossFromRecords(records);
 
           return Column(
             children: [
               _FinanceSummary(
-                income: income,
-                expense: expense,
-                balance: income - expense,
+                income: summary.totalIncome,
+                expense: summary.totalExpense,
+                balance: summary.netProfit,
               ),
               const SizedBox(height: 14),
               Expanded(
@@ -153,19 +152,19 @@ class _FinanceSummary extends StatelessWidget {
             (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
         final cards = [
           _FinanceTotalCard(
-            label: 'Pemasukan',
+            label: 'Pemasukan bulan ini',
             value: income,
             color: AppColors.success,
             icon: Icons.south_west_rounded,
           ),
           _FinanceTotalCard(
-            label: 'Pengeluaran',
+            label: 'Pengeluaran bulan ini',
             value: expense,
             color: AppColors.error,
             icon: Icons.north_east_rounded,
           ),
           _FinanceTotalCard(
-            label: 'Laba / rugi',
+            label: 'Laba / rugi bulan ini',
             value: balance,
             color: balance >= 0 ? AppColors.primaryGreen : AppColors.warning,
             icon: Icons.account_balance_wallet_outlined,
@@ -290,6 +289,26 @@ class _FinanceRecordCard extends StatelessWidget {
                     context,
                   ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
                 ),
+                if (record.paymentMethod.trim().isNotEmpty ||
+                    record.moduleType.trim().isNotEmpty) ...[
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (record.paymentMethod.trim().isNotEmpty)
+                        StatusBadge(
+                          label: record.paymentMethod,
+                          color: AppColors.primaryGreen,
+                        ),
+                      if (record.moduleType.trim().isNotEmpty)
+                        StatusBadge(
+                          label: FarmModules.nameOf(record.moduleType),
+                          color: AppColors.info,
+                        ),
+                    ],
+                  ),
+                ],
                 if (record.note.trim().isNotEmpty) ...[
                   const SizedBox(height: 5),
                   Text(
@@ -350,6 +369,8 @@ class _FinanceFormValue {
     required this.amount,
     required this.date,
     required this.note,
+    required this.paymentMethod,
+    required this.moduleType,
   });
 
   final String type;
@@ -357,6 +378,8 @@ class _FinanceFormValue {
   final double amount;
   final DateTime date;
   final String note;
+  final String paymentMethod;
+  final String moduleType;
 }
 
 class _FinanceFormDialog extends StatefulWidget {
@@ -373,6 +396,8 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
   late final TextEditingController _category;
   late final TextEditingController _amount;
   late final TextEditingController _note;
+  late final TextEditingController _paymentMethod;
+  late String _moduleType;
   late String _type;
   late DateTime _date;
 
@@ -385,6 +410,8 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
       text: record == null ? '' : record.amount.toString(),
     );
     _note = TextEditingController(text: record?.note);
+    _paymentMethod = TextEditingController(text: record?.paymentMethod);
+    _moduleType = record?.moduleType ?? '';
     _type = record?.type ?? 'income';
     _date = record?.date ?? DateTime.now();
   }
@@ -394,6 +421,7 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
     _category.dispose();
     _amount.dispose();
     _note.dispose();
+    _paymentMethod.dispose();
     super.dispose();
   }
 
@@ -410,6 +438,8 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
         amount: _parsedAmount()!,
         date: _date,
         note: _note.text,
+        paymentMethod: _paymentMethod.text,
+        moduleType: _moduleType,
       ),
     );
   }
@@ -490,6 +520,30 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
                       lastDate: DateTime(2100),
                     );
                     if (result != null) setState(() => _date = result);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _paymentMethod,
+                  decoration: const InputDecoration(
+                    labelText: 'Metode pembayaran',
+                    hintText: 'Contoh: tunai, transfer, QRIS',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _moduleType,
+                  decoration: const InputDecoration(labelText: 'Modul kebun'),
+                  items: [
+                    DropdownMenuItem(value: '', child: Text('Umum')),
+                    for (final module in FarmModules.values)
+                      DropdownMenuItem(
+                        value: module.id,
+                        child: Text(module.name),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _moduleType = value ?? '');
                   },
                 ),
                 const SizedBox(height: 12),

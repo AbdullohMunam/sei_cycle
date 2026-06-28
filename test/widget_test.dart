@@ -6,6 +6,8 @@ import 'package:sei_cycle/core/widgets/app_ui.dart';
 import 'package:sei_cycle/core/widgets/async_state_widgets.dart';
 import 'package:sei_cycle/core/widgets/feature_page.dart';
 import 'package:sei_cycle/features/auth/screen/widgets/auth_frame.dart';
+import 'package:sei_cycle/features/finance/models/finance_record.dart';
+import 'package:sei_cycle/features/finance/services/finance_service.dart';
 import 'package:sei_cycle/features/profile/models/app_user.dart';
 import 'package:sei_cycle/theme/app_theme.dart';
 
@@ -83,7 +85,7 @@ void main() {
     expect(operatorKeuangan.canManageInventory, isFalse);
     expect(operatorKeuangan.canManageSchedules, isFalse);
     expect(operatorKeuangan.canManageFinance, isTrue);
-    expect(operatorKeuangan.canDeleteFinance, isFalse);
+    expect(operatorKeuangan.canDeleteFinance, isTrue);
     expect(operatorKeuangan.canViewFinanceDashboard, isTrue);
   });
 
@@ -113,6 +115,51 @@ void main() {
     }
   });
 
+  test('finance summary calculates monthly profit loss and categories', () {
+    final records = [
+      _financeRecord(
+        id: 'income-1',
+        type: 'income',
+        category: 'Panen telur',
+        amount: 150000,
+        date: DateTime(2026, 6, 5),
+      ),
+      _financeRecord(
+        id: 'expense-1',
+        type: 'expense',
+        category: 'Pakan',
+        amount: 50000,
+        date: DateTime(2026, 6, 6),
+      ),
+      _financeRecord(
+        id: 'income-old',
+        type: 'income',
+        category: 'Panen telur',
+        amount: 999000,
+        date: DateTime(2026, 5, 31),
+      ),
+      _financeRecord(
+        id: 'deleted',
+        type: 'expense',
+        category: 'Pakan',
+        amount: 25000,
+        date: DateTime(2026, 6, 7),
+        isDeleted: true,
+      ),
+    ];
+
+    final summary = FinanceService.monthlyProfitLoss(
+      records,
+      month: DateTime(2026, 6, 15),
+    );
+
+    expect(summary.totalIncome, 150000);
+    expect(summary.totalExpense, 50000);
+    expect(summary.netProfit, 100000);
+    expect(summary.transactions, hasLength(2));
+    expect(summary.byCategory['Panen telur']?.income, 150000);
+    expect(summary.byCategory['Pakan']?.expense, 50000);
+  });
   testWidgets('auth layout fits a compact Android viewport', (tester) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;
@@ -186,6 +233,31 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Logbook Operasional'), findsOneWidget);
   });
+}
+
+FinanceRecord _financeRecord({
+  required String id,
+  required String type,
+  required String category,
+  required double amount,
+  required DateTime date,
+  bool isDeleted = false,
+}) {
+  return FinanceRecord(
+    id: id,
+    type: type,
+    category: category,
+    amount: amount,
+    date: date,
+    notes: '',
+    paymentMethod: '',
+    moduleType: '',
+    createdBy: 'tester',
+    updatedBy: 'tester',
+    createdAt: date,
+    updatedAt: date,
+    isDeleted: isDeleted,
+  );
 }
 
 AppUser _userWithRole(String role) {

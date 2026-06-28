@@ -52,13 +52,14 @@ class AppUser {
 
   bool get canViewFinance => isActive;
   bool get canManageFinance => isAdmin || isOperatorKeuangan;
-  bool get canDeleteFinance => isAdmin;
+  bool get canDeleteFinance => isAdmin || isOperatorKeuangan;
   bool get canViewFinanceDashboard => canViewFinance;
 
   bool get canManageOperations =>
       canManageLogbooks || canManageInventory || canManageSchedules;
 
-  bool get canViewReports => isAdmin || isOperatorLapangan || isOperatorKeuangan;
+  bool get canViewReports =>
+      isAdmin || isOperatorLapangan || isOperatorKeuangan;
 
   factory AppUser.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,

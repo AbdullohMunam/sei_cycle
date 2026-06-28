@@ -9,7 +9,9 @@ class FinanceRecord {
     required this.category,
     required this.amount,
     required this.date,
-    required this.note,
+    required this.notes,
+    required this.paymentMethod,
+    required this.moduleType,
     required this.createdBy,
     required this.updatedBy,
     required this.createdAt,
@@ -22,12 +24,16 @@ class FinanceRecord {
   final String category;
   final double amount;
   final DateTime date;
-  final String note;
+  final String notes;
+  final String paymentMethod;
+  final String moduleType;
   final String createdBy;
   final String updatedBy;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
+
+  String get note => notes;
 
   factory FinanceRecord.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
@@ -39,7 +45,12 @@ class FinanceRecord {
       category: stringField(data, const ['category', 'title']),
       amount: doubleField(data, const ['amount']),
       date: dateTimeField(data, const ['date']),
-      note: stringField(data, const ['notes', 'note']),
+      notes: stringField(data, const ['notes', 'description', 'note']),
+      paymentMethod: stringField(data, const [
+        'paymentMethod',
+        'payment_method',
+      ]),
+      moduleType: stringField(data, const ['moduleType', 'module_type']),
       createdBy: stringField(data, const ['createdBy', 'created_by']),
       updatedBy: stringField(data, const ['updatedBy', 'updated_by']),
       createdAt: dateTimeField(data, const ['createdAt', 'created_at']),
@@ -55,7 +66,10 @@ class FinanceRecord {
       'category': category,
       'amount': amount,
       'date': Timestamp.fromDate(date),
-      'notes': note,
+      'description': notes,
+      'notes': notes,
+      'paymentMethod': paymentMethod,
+      'moduleType': moduleType,
       'createdBy': createdBy,
       'updatedBy': updatedBy,
       'createdAt': Timestamp.fromDate(createdAt),
