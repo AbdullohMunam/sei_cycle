@@ -191,16 +191,18 @@ class _MobileShell extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 60,
-        titleSpacing: 18,
+        toolbarHeight: 56,
+        titleSpacing: 16,
         title: Row(
           children: [
-            const _BrandLogo(size: 40),
-            const SizedBox(width: 10),
+            const _BrandLogo(size: 34),
+            const SizedBox(width: 9),
             const Expanded(
               child: Text(
                 'SeiCycle',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -247,7 +249,7 @@ class _MobileNavigation extends StatelessWidget {
         ? visibleCount
         : selectedIndex;
 
-    return DecoratedBox(
+    final navigation = DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.surface,
         boxShadow: [
@@ -293,6 +295,7 @@ class _MobileNavigation extends StatelessWidget {
         ],
       ),
     );
+    return SafeArea(top: false, child: navigation);
   }
 
   Future<void> _showMore(BuildContext context, int startIndex) async {

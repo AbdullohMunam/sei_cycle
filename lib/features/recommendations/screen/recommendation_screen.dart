@@ -45,7 +45,7 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
     return FeaturePage(
       title: 'AI Recommendation',
       subtitle:
-          'Rekomendasi rule-based dari logbook, stok, jadwal, dan keuangan.',
+          'Tahap lanjutan untuk prediksi panen, produktivitas, dan rekomendasi berbasis data.',
       actions: [
         OutlinedButton.icon(
           onPressed: () => setState(_load),
@@ -66,27 +66,85 @@ class _RecommendationScreenState extends State<RecommendationScreen> {
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: const [
+                      _AdvancedStagePanel(),
+                      SizedBox(height: 10),
                       EmptyState(
-                        title: 'Belum ada rekomendasi',
+                        title: 'Insight awal belum tersedia',
                         message:
-                            'Data operasional belum cukup untuk menghasilkan rekomendasi.',
+                            'Data operasional belum cukup untuk membuat evaluasi rule-based.',
                         icon: Icons.psychology_alt_outlined,
                       ),
                     ],
                   )
                 : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: recommendations.length + 1,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    itemCount: recommendations.length + 2,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
-                      if (index == 0) return const _RecommendationNotice();
+                      if (index == 0) return const _AdvancedStagePanel();
+                      if (index == 1) return const _RecommendationNotice();
                       return _RecommendationCard(
-                        recommendation: recommendations[index - 1],
+                        recommendation: recommendations[index - 2],
                       );
                     },
                   ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _AdvancedStagePanel extends StatelessWidget {
+  const _AdvancedStagePanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      borderColor: AppColors.info.withValues(alpha: 0.22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppIconBox(
+                icon: Icons.auto_awesome_outlined,
+                color: AppColors.info,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tahap Lanjutan',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Prediksi panen, evaluasi produktivitas, dan rekomendasi berbasis data akan tersedia pada tahap lanjutan.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              StatusBadge(label: 'Prediksi panen', color: AppColors.info),
+              StatusBadge(label: 'Produktivitas', color: AppColors.info),
+              StatusBadge(label: 'Berbasis data', color: AppColors.info),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -101,7 +159,7 @@ class _RecommendationNotice extends StatelessWidget {
       icon: Icons.auto_awesome_outlined,
       color: AppColors.info,
       message:
-          'Tahap awal ini memakai aturan sederhana di aplikasi, bukan machine learning cloud atau API AI berbayar.',
+          'Insight yang tampil saat ini adalah evaluasi rule-based sederhana, bukan machine learning cloud atau API AI berbayar.',
     );
   }
 }

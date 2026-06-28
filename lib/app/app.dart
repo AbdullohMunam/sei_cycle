@@ -9,7 +9,7 @@ class SeiCycleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SeiCycle - Kebun Sei',
+      title: 'SeiCycle',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const AuthGate(),

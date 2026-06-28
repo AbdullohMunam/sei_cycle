@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
 abstract final class AppSpacing {
-  static const double page = 18;
+  static const double page = 16;
   static const double pageCompact = 14;
-  static const double section = 20;
-  static const double card = 14;
+  static const double section = 18;
+  static const double card = 12;
   static const double gap = 10;
 }
 
@@ -29,7 +29,7 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       side: BorderSide(color: borderColor ?? Colors.transparent),
     );
     final content = Padding(padding: padding, child: child);
@@ -66,7 +66,12 @@ class SectionTitle extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               if (subtitle != null) ...[
                 const SizedBox(height: 3),
                 Text(
@@ -79,7 +84,12 @@ class SectionTitle extends StatelessWidget {
             ],
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+        if (trailing != null) ...[
+          const SizedBox(width: 10),
+          Flexible(
+            child: Align(alignment: Alignment.topRight, child: trailing!),
+          ),
+        ],
       ],
     );
   }
@@ -115,6 +125,8 @@ class StatusBadge extends StatelessWidget {
           ],
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: color,
               fontSize: 10,
@@ -187,6 +199,8 @@ class AppMenuCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
@@ -277,6 +291,82 @@ class InlineMessage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class AppFilterChip extends StatelessWidget {
+  const AppFilterChip({
+    required this.selected,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onSelected,
+    super.key,
+  });
+
+  final bool selected;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      selected: selected,
+      avatar: Icon(icon, size: 15, color: selected ? Colors.white : color),
+      label: Text(label),
+      selectedColor: color,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : color,
+        fontSize: 12,
+        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+      ),
+      onSelected: (_) => onSelected(),
+    );
+  }
+}
+
+class AppDialogShell extends StatelessWidget {
+  const AppDialogShell({
+    required this.title,
+    required this.content,
+    required this.actions,
+    super.key,
+    this.maxWidth = 520,
+  });
+
+  final String title;
+  final Widget content;
+  final List<Widget> actions;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final availableWidth = mediaQuery.size.width - 32;
+    final availableHeight =
+        mediaQuery.size.height -
+        mediaQuery.padding.top -
+        mediaQuery.padding.bottom -
+        96;
+
+    return AlertDialog(
+      title: Text(title),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: availableWidth < maxWidth ? availableWidth : maxWidth,
+          maxHeight: availableHeight.clamp(320, 720).toDouble(),
+        ),
+        child: SingleChildScrollView(child: content),
+      ),
+      actions: actions,
     );
   }
 }

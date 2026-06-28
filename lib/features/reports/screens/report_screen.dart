@@ -157,9 +157,24 @@ class _ReportScreenState extends State<ReportScreen> {
       decimalDigits: 0,
     );
 
+    final hasReportData =
+        data.logbooks.isNotEmpty ||
+        data.lowStockItems.isNotEmpty ||
+        data.totalIncome > 0 ||
+        data.totalExpense > 0;
+
     return ListView(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: 12),
       children: [
+        if (!hasReportData) ...[
+          const InlineMessage(
+            icon: Icons.analytics_outlined,
+            color: AppColors.info,
+            message:
+                'Laporan akan tersedia setelah data logbook, inventaris, atau transaksi terkumpul.',
+          ),
+          const SizedBox(height: 12),
+        ],
         ResponsiveFormRow(
           breakpoint: 520,
           children: [
@@ -359,7 +374,10 @@ class _DateRangePicker extends StatelessWidget {
         }
       },
       icon: const Icon(Icons.date_range),
-      label: Text('${format.format(startDate)} - ${format.format(endDate)}'),
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text('${format.format(startDate)} - ${format.format(endDate)}'),
+      ),
     );
   }
 }

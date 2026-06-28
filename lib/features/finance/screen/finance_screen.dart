@@ -322,11 +322,15 @@ class _FinanceRecordCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        currencyFormat.format(record.amount),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(color: color),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          currencyFormat.format(record.amount),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(color: color),
+                        ),
                       ),
                     ),
                     if (canEdit || canDelete)
@@ -446,118 +450,109 @@ class _FinanceFormDialogState extends State<_FinanceFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.record == null ? 'Tambah Transaksi' : 'Edit Transaksi',
-      ),
-      content: SizedBox(
-        width: 480,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<String>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                        value: 'income',
-                        label: Text('Pemasukan'),
-                        icon: Icon(Icons.trending_up),
-                      ),
-                      ButtonSegment(
-                        value: 'expense',
-                        label: Text('Pengeluaran'),
-                        icon: Icon(Icons.trending_down),
-                      ),
-                    ],
-                    selected: {_type},
-                    onSelectionChanged: (value) {
-                      setState(() => _type = value.first);
-                    },
+    return AppDialogShell(
+      title: widget.record == null ? 'Tambah Transaksi' : 'Edit Transaksi',
+      maxWidth: 480,
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: 'income',
+                    label: Text('Pemasukan'),
+                    icon: Icon(Icons.trending_up),
                   ),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _category,
-                  decoration: const InputDecoration(
-                    labelText: 'Kategori',
-                    hintText: 'Contoh: penjualan telur',
+                  ButtonSegment(
+                    value: 'expense',
+                    label: Text('Pengeluaran'),
+                    icon: Icon(Icons.trending_down),
                   ),
-                  validator: _required,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _amount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Nominal',
-                    prefixText: 'Rp ',
-                  ),
-                  validator: (_) {
-                    final value = _parsedAmount();
-                    return value == null || value <= 0
-                        ? 'Nominal harus lebih dari 0'
-                        : null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                AppMenuCard(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Tanggal transaksi',
-                  subtitle: shortDateFormat.format(_date),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () async {
-                    final result = await showDatePicker(
-                      context: context,
-                      initialDate: _date,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                    );
-                    if (result != null) setState(() => _date = result);
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _paymentMethod,
-                  decoration: const InputDecoration(
-                    labelText: 'Metode pembayaran',
-                    hintText: 'Contoh: tunai, transfer, QRIS',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _moduleType,
-                  decoration: const InputDecoration(labelText: 'Modul kebun'),
-                  items: [
-                    DropdownMenuItem(value: '', child: Text('Umum')),
-                    for (final module in FarmModules.values)
-                      DropdownMenuItem(
-                        value: module.id,
-                        child: Text(module.name),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _moduleType = value ?? '');
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _note,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan',
-                    hintText: 'Keterangan singkat transaksi (opsional)',
-                  ),
-                ),
-              ],
+                ],
+                selected: {_type},
+                onSelectionChanged: (value) {
+                  setState(() => _type = value.first);
+                },
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _category,
+              decoration: const InputDecoration(
+                labelText: 'Kategori',
+                hintText: 'Contoh: penjualan telur',
+              ),
+              validator: _required,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _amount,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Nominal',
+                prefixText: 'Rp ',
+              ),
+              validator: (_) {
+                final value = _parsedAmount();
+                return value == null || value <= 0
+                    ? 'Nominal harus lebih dari 0'
+                    : null;
+              },
+            ),
+            const SizedBox(height: 12),
+            AppMenuCard(
+              icon: Icons.calendar_today_outlined,
+              title: 'Tanggal transaksi',
+              subtitle: shortDateFormat.format(_date),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () async {
+                final result = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2100),
+                );
+                if (result != null) setState(() => _date = result);
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _paymentMethod,
+              decoration: const InputDecoration(
+                labelText: 'Metode pembayaran',
+                hintText: 'Contoh: tunai, transfer, QRIS',
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _moduleType,
+              decoration: const InputDecoration(labelText: 'Modul kebun'),
+              items: [
+                DropdownMenuItem(value: '', child: Text('Umum')),
+                for (final module in FarmModules.values)
+                  DropdownMenuItem(value: module.id, child: Text(module.name)),
+              ],
+              onChanged: (value) {
+                setState(() => _moduleType = value ?? '');
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _note,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Catatan',
+                hintText: 'Keterangan singkat transaksi (opsional)',
+              ),
+            ),
+          ],
         ),
       ),
       actions: [

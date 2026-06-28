@@ -65,46 +65,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
         children: [
           SizedBox(
             height: 36,
-            child: ListView(
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              children: [
-                _NotificationFilterChip(
-                  selected: _type == null,
-                  label: 'Semua',
-                  icon: Icons.notifications_none_rounded,
-                  color: AppColors.info,
-                  onSelected: () => setState(() => _type = null),
-                ),
-                _NotificationFilterChip(
-                  selected: _type == 'production_reminder',
-                  label: 'Jadwal Pakan',
-                  icon: Icons.notifications_none_rounded,
-                  color: AppColors.info,
-                  onSelected: () =>
-                      setState(() => _type = 'production_reminder'),
-                ),
-                _NotificationFilterChip(
-                  selected: _type == 'schedule_overdue',
-                  label: 'Peringatan',
-                  icon: Icons.warning_amber_rounded,
-                  color: AppColors.warning,
-                  onSelected: () => setState(() => _type = 'schedule_overdue'),
-                ),
-                _NotificationFilterChip(
-                  selected: _type == 'low_stock',
-                  label: 'Stok Rendah',
-                  icon: Icons.inventory_2_outlined,
-                  color: AppColors.error,
-                  onSelected: () => setState(() => _type = 'low_stock'),
-                ),
-                _NotificationFilterChip(
-                  selected: _type == 'system',
-                  label: 'Sistem',
-                  icon: Icons.check_circle_outline,
-                  color: AppColors.success,
-                  onSelected: () => setState(() => _type = 'system'),
-                ),
-              ],
+              itemCount: _notificationFilters.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final filter = _notificationFilters[index];
+                return AppFilterChip(
+                  selected: _type == filter.type,
+                  label: filter.label,
+                  icon: filter.icon,
+                  color: filter.color,
+                  onSelected: () => setState(() => _type = filter.type),
+                );
+              },
             ),
           ),
           const SizedBox(height: 14),
@@ -130,6 +104,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 }
 
                 return ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 12),
                   itemCount: notifications.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
@@ -149,6 +124,53 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
     );
   }
+}
+
+const _notificationFilters = [
+  _NotificationFilter(
+    type: null,
+    label: 'Semua',
+    icon: Icons.notifications_none_rounded,
+    color: AppColors.info,
+  ),
+  _NotificationFilter(
+    type: 'production_reminder',
+    label: 'Jadwal Pakan',
+    icon: Icons.notifications_active_outlined,
+    color: AppColors.primaryGreen,
+  ),
+  _NotificationFilter(
+    type: 'schedule_overdue',
+    label: 'Produksi',
+    icon: Icons.warning_amber_rounded,
+    color: AppColors.warning,
+  ),
+  _NotificationFilter(
+    type: 'low_stock',
+    label: 'Stok Rendah',
+    icon: Icons.inventory_2_outlined,
+    color: AppColors.error,
+  ),
+  _NotificationFilter(
+    type: 'system',
+    label: 'Alert Sistem',
+    icon: Icons.info_outline,
+    color: AppColors.info,
+  ),
+];
+
+class _NotificationFilter {
+  const _NotificationFilter({
+    required this.type,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  final String? type;
+  final String label;
+  final IconData icon;
+  final Color color;
 }
 
 class _NotificationCard extends StatelessWidget {
@@ -178,7 +200,7 @@ class _NotificationCard extends StatelessWidget {
               child: AppIconBox(
                 icon: _typeIcon(notification.type),
                 color: color,
-                size: 42,
+                size: 38,
               ),
             ),
             Expanded(
@@ -249,41 +271,6 @@ class _NotificationCard extends StatelessWidget {
   }
 }
 
-class _NotificationFilterChip extends StatelessWidget {
-  const _NotificationFilterChip({
-    required this.selected,
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onSelected,
-  });
-
-  final bool selected;
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        selected: selected,
-        avatar: Icon(icon, size: 15, color: selected ? Colors.white : color),
-        label: Text(label),
-        selectedColor: color,
-        labelStyle: TextStyle(
-          color: selected ? Colors.white : color,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
-        onSelected: (_) => onSelected(),
-      ),
-    );
-  }
-}
-
 Color _typeColor(String type) => switch (type) {
   'low_stock' => AppColors.warning,
   'schedule_overdue' => AppColors.error,
@@ -300,7 +287,7 @@ IconData _typeIcon(String type) => switch (type) {
 
 String _typeLabel(String type) => switch (type) {
   'low_stock' => 'Stok rendah',
-  'schedule_overdue' => 'Overdue',
-  'production_reminder' => 'Produksi',
-  _ => 'Sistem',
+  'schedule_overdue' => 'Produksi',
+  'production_reminder' => 'Jadwal pakan',
+  _ => 'Alert sistem',
 };

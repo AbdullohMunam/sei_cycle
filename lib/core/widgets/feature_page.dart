@@ -18,61 +18,75 @@ class FeaturePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 600;
-        final header = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.headlineSmall),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle!,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
-              ),
-            ],
-          ],
-        );
-
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 14 : 22,
-            compact ? 18 : 22,
-            compact ? 14 : 22,
-            compact ? 14 : 20,
-          ),
-          child: Column(
+    return SafeArea(
+      top: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 600;
+          final header = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (compact) ...[
-                header,
-                if (actions.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Wrap(spacing: 8, runSpacing: 8, children: actions),
-                  ),
-                ],
-              ] else
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: header),
-                    if (actions.isNotEmpty) ...[
-                      const SizedBox(width: 16),
-                      Wrap(spacing: 8, runSpacing: 8, children: actions),
-                    ],
-                  ],
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle!,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
                 ),
-              const SizedBox(height: 14),
-              Expanded(child: child),
+              ],
             ],
-          ),
-        );
-      },
+          );
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 16 : 22,
+              compact ? 16 : 22,
+              compact ? 16 : 22,
+              compact ? 12 : 18,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (compact) ...[
+                  header,
+                  if (actions.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Wrap(spacing: 8, runSpacing: 8, children: actions),
+                  ],
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: header),
+                      if (actions.isNotEmpty) ...[
+                        const SizedBox(width: 16),
+                        Flexible(
+                          child: Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: actions,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                const SizedBox(height: 14),
+                Expanded(child: child),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

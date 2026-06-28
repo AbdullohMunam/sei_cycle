@@ -103,10 +103,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ?.copyWith(color: AppColors.textMuted),
                           ),
                           const SizedBox(height: 7),
-                          StatusBadge(
-                            label: widget.profile.roleLabel,
-                            color: AppColors.primaryGreen,
-                            icon: Icons.badge_outlined,
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              StatusBadge(
+                                label: widget.profile.roleLabel,
+                                color: AppColors.primaryGreen,
+                                icon: Icons.badge_outlined,
+                              ),
+                              StatusBadge(
+                                label: widget.profile.isActive
+                                    ? 'Aktif'
+                                    : 'Nonaktif',
+                                color: widget.profile.isActive
+                                    ? AppColors.success
+                                    : AppColors.error,
+                                icon: widget.profile.isActive
+                                    ? Icons.verified_user_outlined
+                                    : Icons.block_outlined,
+                              ),
+                            ],
                           ),
                         ],
                       ),

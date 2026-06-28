@@ -218,7 +218,7 @@ class _InventoryItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.isLowStock ? AppColors.warning : AppColors.success;
+    final color = _stockStatusColor(item);
     return AppCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,7 +251,7 @@ class _InventoryItemCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     StatusBadge(
-                      label: item.isLowStock ? 'Stok menipis' : 'Stok aman',
+                      label: _stockStatusLabel(item),
                       color: color,
                       icon: item.isLowStock
                           ? Icons.warning_amber_rounded
@@ -391,82 +391,72 @@ class _InventoryFormDialogState extends State<_InventoryFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.item == null ? 'Tambah Inventaris' : 'Edit Inventaris',
-      ),
-      content: SizedBox(
-        width: 480,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return AppDialogShell(
+      title: widget.item == null ? 'Tambah Inventaris' : 'Edit Inventaris',
+      maxWidth: 480,
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _name,
+              decoration: const InputDecoration(
+                labelText: 'Nama item',
+                hintText: 'Contoh: pakan lele',
+              ),
+              validator: _required,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _category,
+              decoration: const InputDecoration(
+                labelText: 'Kategori',
+                hintText: 'Pakan, alat, benih, atau lainnya',
+              ),
+              validator: _required,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _unit,
+              decoration: const InputDecoration(
+                labelText: 'Satuan',
+                hintText: 'kg, liter, pcs, karung',
+              ),
+              validator: _required,
+            ),
+            const SizedBox(height: 12),
+            ResponsiveFormRow(
               children: [
                 TextFormField(
-                  controller: _name,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama item',
-                    hintText: 'Contoh: pakan lele',
+                  controller: _currentStock,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  validator: _required,
+                  decoration: const InputDecoration(labelText: 'Stok saat ini'),
+                  validator: (value) {
+                    final stock = _parse(value ?? '');
+                    return stock == null || stock < 0
+                        ? 'Stok tidak boleh negatif'
+                        : null;
+                  },
                 ),
-                const SizedBox(height: 12),
                 TextFormField(
-                  controller: _category,
-                  decoration: const InputDecoration(
-                    labelText: 'Kategori',
-                    hintText: 'Pakan, alat, benih, atau lainnya',
+                  controller: _minStock,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  validator: _required,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _unit,
-                  decoration: const InputDecoration(
-                    labelText: 'Satuan',
-                    hintText: 'kg, liter, pcs, karung',
-                  ),
-                  validator: _required,
-                ),
-                const SizedBox(height: 12),
-                ResponsiveFormRow(
-                  children: [
-                    TextFormField(
-                      controller: _currentStock,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Stok saat ini',
-                      ),
-                      validator: (value) {
-                        final stock = _parse(value ?? '');
-                        return stock == null || stock < 0
-                            ? 'Stok tidak boleh negatif'
-                            : null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _minStock,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Stok minimum',
-                      ),
-                      validator: (value) {
-                        final stock = _parse(value ?? '');
-                        return stock == null || stock < 0
-                            ? 'Stok tidak boleh negatif'
-                            : null;
-                      },
-                    ),
-                  ],
+                  decoration: const InputDecoration(labelText: 'Stok minimum'),
+                  validator: (value) {
+                    final stock = _parse(value ?? '');
+                    return stock == null || stock < 0
+                        ? 'Stok tidak boleh negatif'
+                        : null;
+                  },
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
       actions: [
@@ -486,3 +476,15 @@ String _number(double value) => value == value.roundToDouble()
 
 String? _required(String? value) =>
     value == null || value.trim().isEmpty ? 'Wajib diisi' : null;
+
+String _stockStatusLabel(InventoryItem item) {
+  if (!item.isLowStock) return 'Aman';
+  if (item.currentStock <= 0) return 'Stok rendah';
+  return 'Menipis';
+}
+
+Color _stockStatusColor(InventoryItem item) {
+  if (!item.isLowStock) return AppColors.success;
+  if (item.currentStock <= 0) return AppColors.error;
+  return AppColors.warning;
+}

@@ -287,12 +287,12 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(item.status);
+    final color = _scheduleStatusColor(item);
     return AppCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppIconBox(icon: _statusIcon(item.status), color: color),
+          AppIconBox(icon: _scheduleStatusIcon(item), color: color),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -309,9 +309,9 @@ class _ScheduleCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     StatusBadge(
-                      label: _statusLabel(item.status),
+                      label: _scheduleStatusLabel(item),
                       color: color,
-                      icon: _statusIcon(item.status),
+                      icon: _scheduleStatusIcon(item),
                     ),
                   ],
                 ),
@@ -491,77 +491,70 @@ class _ScheduleFormDialogState extends State<_ScheduleFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.item == null ? 'Tambah Jadwal' : 'Edit Jadwal'),
-      content: SizedBox(
-        width: 500,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _title,
-                  decoration: const InputDecoration(
-                    labelText: 'Judul agenda',
-                    hintText: 'Contoh: pakan lele sore',
-                  ),
-                  validator: _required,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _moduleId,
-                  decoration: const InputDecoration(labelText: 'Modul kebun'),
-                  items: [
-                    for (final module in FarmModules.values)
-                      DropdownMenuItem(
-                        value: module.id,
-                        child: Text(module.name),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _moduleId = value!),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _type,
-                  decoration: const InputDecoration(
-                    labelText: 'Jenis jadwal',
-                    hintText: 'Pakan, perawatan, panen, atau lainnya',
-                  ),
-                  validator: _required,
-                ),
-                const SizedBox(height: 12),
-                AppMenuCard(
-                  icon: Icons.edit_calendar_outlined,
-                  title: 'Waktu pelaksanaan',
-                  subtitle: dateTimeFormat.format(_scheduledAt),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _pickDateTime,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Menunggu')),
-                    DropdownMenuItem(value: 'done', child: Text('Selesai')),
-                    DropdownMenuItem(value: 'skipped', child: Text('Dilewati')),
-                  ],
-                  onChanged: (value) => setState(() => _status = value!),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _note,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan',
-                    hintText: 'Detail pelaksanaan atau kebutuhan (opsional)',
-                  ),
-                ),
-              ],
+    return AppDialogShell(
+      title: widget.item == null ? 'Tambah Jadwal' : 'Edit Jadwal',
+      maxWidth: 500,
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _title,
+              decoration: const InputDecoration(
+                labelText: 'Judul agenda',
+                hintText: 'Contoh: pakan lele sore',
+              ),
+              validator: _required,
             ),
-          ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _moduleId,
+              decoration: const InputDecoration(labelText: 'Modul kebun'),
+              items: [
+                for (final module in FarmModules.values)
+                  DropdownMenuItem(value: module.id, child: Text(module.name)),
+              ],
+              onChanged: (value) => setState(() => _moduleId = value!),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _type,
+              decoration: const InputDecoration(
+                labelText: 'Jenis jadwal',
+                hintText: 'Pakan, perawatan, panen, atau lainnya',
+              ),
+              validator: _required,
+            ),
+            const SizedBox(height: 12),
+            AppMenuCard(
+              icon: Icons.edit_calendar_outlined,
+              title: 'Waktu pelaksanaan',
+              subtitle: dateTimeFormat.format(_scheduledAt),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: _pickDateTime,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _status,
+              decoration: const InputDecoration(labelText: 'Status'),
+              items: const [
+                DropdownMenuItem(value: 'pending', child: Text('Menunggu')),
+                DropdownMenuItem(value: 'done', child: Text('Selesai')),
+                DropdownMenuItem(value: 'skipped', child: Text('Dilewati')),
+              ],
+              onChanged: (value) => setState(() => _status = value!),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _note,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Catatan',
+                hintText: 'Detail pelaksanaan atau kebutuhan (opsional)',
+              ),
+            ),
+          ],
         ),
       ),
       actions: [
@@ -575,23 +568,47 @@ class _ScheduleFormDialogState extends State<_ScheduleFormDialog> {
   }
 }
 
-Color _statusColor(String status) => switch (status) {
-  'done' => AppColors.success,
-  'skipped' => AppColors.textMuted,
-  _ => AppColors.warning,
-};
-
-IconData _statusIcon(String status) => switch (status) {
-  'done' => Icons.check_circle_outline,
-  'skipped' => Icons.skip_next_outlined,
-  _ => Icons.schedule_outlined,
-};
-
 String _statusLabel(String status) => switch (status) {
   'done' => 'Selesai',
   'skipped' => 'Dilewati',
   _ => 'Menunggu',
 };
+
+Color _scheduleStatusColor(ScheduleItem item) {
+  if (item.status == 'done') return AppColors.success;
+  if (item.status == 'skipped') return AppColors.textMuted;
+  if (_isOverdue(item)) return AppColors.error;
+  if (_isToday(item.scheduledAt)) return AppColors.primaryGreen;
+  return AppColors.warning;
+}
+
+IconData _scheduleStatusIcon(ScheduleItem item) {
+  if (item.status == 'done') return Icons.check_circle_outline;
+  if (item.status == 'skipped') return Icons.skip_next_outlined;
+  if (_isOverdue(item)) return Icons.event_busy_outlined;
+  if (_isToday(item.scheduledAt)) return Icons.today_outlined;
+  return Icons.schedule_outlined;
+}
+
+String _scheduleStatusLabel(ScheduleItem item) {
+  if (item.status == 'done' || item.status == 'skipped') {
+    return _statusLabel(item.status);
+  }
+  if (_isOverdue(item)) return 'Terlambat';
+  if (_isToday(item.scheduledAt)) return 'Hari ini';
+  return 'Mendatang';
+}
+
+bool _isOverdue(ScheduleItem item) {
+  return item.status == 'pending' && item.scheduledAt.isBefore(DateTime.now());
+}
+
+bool _isToday(DateTime value) {
+  final now = DateTime.now();
+  return value.year == now.year &&
+      value.month == now.month &&
+      value.day == now.day;
+}
 
 String? _required(String? value) =>
     value == null || value.trim().isEmpty ? 'Wajib diisi' : null;
