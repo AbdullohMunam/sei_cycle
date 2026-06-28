@@ -77,6 +77,7 @@ void main() {
       expect(user.canViewSchedules, isTrue);
       expect(user.canViewFinance, isTrue);
       expect(user.canViewRecommendations, isTrue);
+      expect(user.canViewReports, isTrue);
     }
 
     expect(operatorLapangan.canManageLogbooks, isTrue);
@@ -111,6 +112,7 @@ void main() {
       expect(user.canViewSchedules, isTrue);
       expect(user.canViewFinance, isTrue);
       expect(user.canViewRecommendations, isTrue);
+      expect(user.canViewReports, isTrue);
       expect(user.canManageLogbooks, isFalse);
       expect(user.canManageInventory, isFalse);
       expect(user.canManageSchedules, isFalse);

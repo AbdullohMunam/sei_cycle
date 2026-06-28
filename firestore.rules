@@ -17,9 +17,24 @@ service cloud.firestore {
     }
 
     function activeUser() {
-      return hasProfile()
-        && currentUser().data.isActive != false
-        && currentUser().data.is_active != false;
+      return signedIn()
+        && (
+          !hasProfile()
+          || (
+            (
+              !('isActive' in currentUser().data.keys())
+              || currentUser().data.isActive != false
+            )
+            && (
+              !('is_active' in currentUser().data.keys())
+              || currentUser().data.is_active != false
+            )
+          )
+        );
+    }
+
+    function canViewAppData() {
+      return signedIn();
     }
 
     function profileRole() {
@@ -177,10 +192,6 @@ service cloud.firestore {
         ]);
     }
 
-    function isPublishedEducation(data) {
-      return data.isDeleted == false && data.status == 'published';
-    }
-
     function canReadNotification(data) {
       return activeUser() && (
         isAdmin()
@@ -249,7 +260,7 @@ service cloud.firestore {
           'production_reminder'
         ]
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.targetRole == effectiveProfileRole();
+        && isRoleTarget(request.resource.data.targetRole);
     }
 
     function userCanRefreshOwnNotification() {
@@ -257,7 +268,7 @@ service cloud.firestore {
         && validNotificationBase(resource.data.id, request.resource.data)
         && resource.data.userId == request.auth.uid
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.targetRole == effectiveProfileRole()
+        && isRoleTarget(request.resource.data.targetRole)
         && request.resource.data.type == resource.data.type
         && request.resource.data.type in [
           'low_stock',
@@ -274,8 +285,9 @@ service cloud.firestore {
 
     /*
       USERS
-      Admin bisa baca/tambah/edit/hapus semua user.
+      Semua user login bisa baca profil untuk tampilan/role app.
       User biasa hanya bisa buat dan edit profil sendiri.
+      Admin bisa tambah/edit/hapus semua user.
     */
     match /users/{uid} {
       allow create: if (
@@ -294,9 +306,7 @@ service cloud.firestore {
         && supportedRole(request.resource.data.role)
       );
 
-      allow read: if signedIn() && (
-        request.auth.uid == uid || isAdmin()
-      );
+      allow read: if canViewAppData();
 
       allow update: if (
         isAdmin()
@@ -308,22 +318,22 @@ service cloud.firestore {
 
     /*
       MASTER MODUL KEBUN
-      Semua user aktif bisa lihat.
+      Semua user login bisa lihat.
       Hanya admin yang boleh kelola.
     */
     match /farm_modules/{moduleId} {
-      allow read: if activeUser();
+      allow read: if canViewAppData();
       allow create, update, delete: if isAdmin();
     }
 
     /*
       LOGBOOK OPERASIONAL
-      Semua user aktif bisa lihat tampilan.
+      Semua user login bisa lihat tampilan.
       Admin dan operator lapangan bisa tambah/edit.
       Hapus permanen hanya admin.
     */
     match /logbooks/{logbookId} {
-      allow read: if activeUser();
+      allow read: if canViewAppData();
 
       allow create: if canManageOperations()
         && (
@@ -349,7 +359,7 @@ service cloud.firestore {
       Bukan inventory_items.
     */
     match /inventory/{itemId} {
-      allow read: if activeUser();
+      allow read: if canViewAppData();
 
       allow create: if canManageOperations()
         && (
@@ -374,7 +384,7 @@ service cloud.firestore {
       SCHEDULES / KALENDER OPERASIONAL
     */
     match /schedules/{scheduleId} {
-      allow read: if activeUser();
+      allow read: if canViewAppData();
 
       allow create: if canManageOperations()
         && (
@@ -397,13 +407,11 @@ service cloud.firestore {
 
     /*
       EDUKASI
-      Semua user aktif bisa lihat konten published.
+      Semua user login bisa lihat tampilan edukasi.
       Hanya admin yang bisa lihat dan kelola semua status.
     */
     match /education_contents/{contentId} {
-      allow read: if activeUser() && (
-        isAdmin() || isPublishedEducation(resource.data)
-      );
+      allow read: if canViewAppData();
 
       allow create: if isAdmin();
       allow update: if isAdmin();
@@ -413,12 +421,12 @@ service cloud.firestore {
     /*
       FINANCE
       Collection branch backend: finance_transactions
-      Semua user aktif bisa lihat tampilan.
+      Semua user login bisa lihat tampilan.
       Admin dan operator keuangan bisa tambah/edit/soft delete/delete.
       Operator lapangan hanya read-only lewat route yang tersedia.
     */
     match /finance_transactions/{transactionId} {
-      allow read: if activeUser();
+      allow read: if canViewAppData();
 
       allow create: if canManageFinance()
         && validFinanceTransaction(transactionId, request.resource.data)
@@ -440,20 +448,19 @@ service cloud.firestore {
       Admin bisa baca dan hapus semua.
     */
     match /notifications/{notificationId} {
-      allow read: if canReadNotification(resource.data);
+      allow read: if canViewAppData();
 
       allow create: if userCanCreateOwnNotification(notificationId)
         || adminCanCreateSystemNotification(notificationId);
 
-      allow update: if canReadNotification(resource.data)
-        && request.resource.data.id == resource.data.id
-        && (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      allow update: if (
+          canReadNotification(resource.data)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'isRead',
             'readAt'
           ])
-          || userCanRefreshOwnNotification()
-        );
+        ) || userCanRefreshOwnNotification();
 
       allow delete: if isAdmin();
     }
@@ -464,7 +471,7 @@ service cloud.firestore {
       Admin dan operator keuangan boleh kelola.
     */
     match /report_metadata/{reportId} {
-      allow read: if activeUser();
+      allow read: if canViewAppData();
 
       allow create: if canManageFinance()
         && (
@@ -488,7 +495,7 @@ service cloud.firestore {
       Collection ini disiapkan untuk snapshot rekomendasi manual/admin-side.
     */
     match /recommendations/{recommendationId} {
-      allow read: if activeUser();
+      allow read: if canViewAppData();
       allow create, update, delete: if isAdmin();
     }
 
