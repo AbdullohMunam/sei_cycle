@@ -47,15 +47,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!widget.profile.canManageInventory) return;
     final notificationService = NotificationService();
     for (final item in summary.lowStockPreview) {
-      await notificationService.createLowStockAlert(
-        userId: widget.profile.uid,
-        role: widget.profile.effectiveRole,
-        itemId: item.id,
-        name: item.name,
-        currentStock: item.currentStock,
-        minStock: item.minStock,
-        unit: item.unit,
-      );
+      try {
+        await notificationService.createLowStockAlert(
+          userId: widget.profile.uid,
+          role: widget.profile.effectiveRole,
+          itemId: item.id,
+          name: item.name,
+          currentStock: item.currentStock,
+          minStock: item.minStock,
+          unit: item.unit,
+        );
+      } catch (error, stackTrace) {
+        debugPrint('Gagal membuat notifikasi stok rendah: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
     }
   }
 

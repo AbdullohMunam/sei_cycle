@@ -26,6 +26,8 @@ Materi video, SOP, atau artikel menggunakan field `external_url`, dan FCM
 dibatasi untuk request permission serta token readiness dari client.
 
 Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACKEND.md).
+Checklist final brief tersedia di
+[docs/FEATURE_COMPLETION_CHECKLIST.md](docs/FEATURE_COMPLETION_CHECKLIST.md).
 
 ## Fitur yang Disiapkan
 
@@ -41,7 +43,10 @@ Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACK
 - Keuangan pemasukan, pengeluaran, total, dan laba/rugi sederhana; hapus transaksi khusus admin.
 - Seed lima dokumen `farm_modules` dari menu Profil admin.
 - Firestore Security Rules berbasis autentikasi dan role.
-- Permintaan izin FCM tersedia di Profil, tetapi pengiriman push ditunda.
+- Notifikasi free-mode: inbox Firestore, local reminder client-side, dan ID
+  deterministik untuk alert stok rendah/jadwal overdue agar tidak spam duplicate.
+- Report PDF/Excel dibuat lokal dari data Firestore dan aman untuk data kosong.
+- Rekomendasi rule-based tetap menghasilkan fallback aman ketika data masih minim.
 
 ## Checklist Brief SeiCycle
 
@@ -65,13 +70,13 @@ Dokumentasi backend Firebase client-side tersedia di [docs/BACKEND.md](docs/BACK
 ### Belum selesai atau sengaja ditunda
 
 - [ ] Firebase Web, iOS, macOS, Windows, atau Linux options dari FlutterFire.
+- [x] Local notification reminder client-side/free-mode.
+- [x] PDF/Excel report client-side.
+- [x] Rule-based recommendation.
 - [ ] Pengiriman push notification terjadwal atau server-side.
-- [ ] Local notification reminder client-side bila dibutuhkan.
 - [ ] Upload file atau gambar dengan Firebase Storage.
 - [ ] Cloud Functions atau backend job server-side.
 - [ ] Backend Express/API/server hosting.
-- [ ] PDF/Excel report.
-- [ ] AI recommendation.
 - [ ] App Check dan hardening produksi lanjutan.
 
 ## Prasyarat
@@ -161,10 +166,13 @@ Rules. Tidak ada script seeder Node.js atau Firebase Admin SDK.
 | `users` | UID Firebase Auth | Profil dan role pengguna |
 | `farm_modules` | ID modul tetap | Master lima modul Kebun Sei |
 | `logbooks` | UUID | Catatan aktivitas operasional |
-| `inventory_items` | UUID | Stok dan batas minimum |
+| `inventory` | UUID | Stok dan batas minimum |
 | `schedules` | UUID | Kalender dan status pekerjaan |
 | `education_contents` | UUID | Artikel, video URL, dan SOP |
-| `finance_records` | UUID | Pemasukan dan pengeluaran admin/operator keuangan |
+| `finance_transactions` | UUID | Pemasukan dan pengeluaran admin/operator keuangan |
+| `notifications` | Deterministik/UUID | Inbox notifikasi free-mode |
+| `report_metadata` | UUID | Metadata laporan/export client |
+| `recommendations` | UUID | Snapshot rekomendasi opsional |
 
 Detail field tersedia di [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md).
 
@@ -183,12 +191,12 @@ Semua akun baru memiliki role `operator_lapangan`. Untuk MVP, ubah admin atau op
 1. Buka **Firestore Database > users**.
 2. Pilih dokumen dengan ID UID pengguna.
 3. Ubah field `role` menjadi `admin`, `operator_lapangan`, atau `operator_keuangan`.
-4. Pastikan `is_active` bernilai `true`.
+4. Pastikan `isActive` atau `is_active` bernilai `true`.
 
 UI role membantu pengalaman pengguna: semua user aktif bisa membuka semua menu,
 tetapi tombol tambah/edit hanya muncul sesuai akses role dan tombol hapus hanya
 muncul untuk admin. Otorisasi final tetap dilakukan oleh Firestore Security
-Rules. `finance_records` bisa dibaca user aktif untuk tampilan dashboard/laporan,
+Rules. `finance_transactions` bisa dibaca user aktif untuk tampilan dashboard/laporan,
 tetapi hanya admin dan operator keuangan yang boleh menambah atau mengubah
 transaksi; hapus transaksi dibatasi untuk admin.
 
@@ -196,9 +204,18 @@ transaksi; hapus transaksi dibatasi untuk admin.
 
 ```bash
 flutter pub get
-flutter analyze
+flutter analyze --no-pub
+flutter test --no-pub --reporter expanded
 flutter run
 ```
+
+Verifikasi final branch ini pada 28 Juni 2026:
+
+- `flutter pub get` berhasil.
+- `flutter analyze --no-pub` tidak menemukan error fatal; tersisa 5 info/lint
+  non-blocking terkait deprecated `Share.shareXFiles` dan enum
+  `full_summary`.
+- `flutter test --no-pub --reporter expanded` berhasil setelah patch final.
 
 Untuk Android, pastikan `android/app/google-services.json` tersedia. Untuk Web
 atau platform lain, jalankan `flutterfire configure` terlebih dahulu.
@@ -228,6 +245,7 @@ lib/
 docs/
   BACKEND.md
   ERD.md
+  FEATURE_COMPLETION_CHECKLIST.md
   FIRESTORE_SCHEMA.md
 ```
 
@@ -252,7 +270,5 @@ authorized domains, App Check bila diperlukan, dan Firestore Rules.
 
 - Backend Express/API sendiri.
 - Cloud Functions dan backend scheduler.
-- PDF/Excel report.
-- AI recommendation.
 - Upload media lewat Firebase Storage.
 - Pengiriman FCM push notification server-side jika belum diperlukan.

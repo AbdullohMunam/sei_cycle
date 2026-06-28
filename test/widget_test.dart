@@ -11,6 +11,7 @@ import 'package:sei_cycle/features/finance/services/finance_service.dart';
 import 'package:sei_cycle/features/inventory/models/inventory_item.dart';
 import 'package:sei_cycle/features/logbook/models/logbook_entry.dart';
 import 'package:sei_cycle/features/profile/models/app_user.dart';
+import 'package:sei_cycle/features/reports/models/analytics_model.dart';
 import 'package:sei_cycle/features/recommendations/services/recommendation_service.dart';
 import 'package:sei_cycle/features/schedule/models/schedule_item.dart';
 import 'package:sei_cycle/theme/app_theme.dart';
@@ -245,6 +246,36 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  test('rule based recommendations stay safe with minimal data', () {
+    final recommendations = RecommendationService.generateFromData(
+      logbooks: const [],
+      lowStockItems: const [],
+      overdueSchedules: const [],
+      financeRecords: const [],
+      includeFinance: true,
+      now: DateTime(2026, 6, 28),
+    );
+
+    expect(recommendations, isNotEmpty);
+    expect(recommendations.first.priority, 'low');
+  });
+
+  test('report analytics handles empty datasets', () {
+    final analytics = AnalyticsModel(
+      logbooks: const [],
+      inventoryItems: const [],
+      financeRecords: const [],
+      startDate: DateTime(2026, 6),
+      endDate: DateTime(2026, 7),
+    );
+
+    expect(analytics.logbooksPerModule, isEmpty);
+    expect(analytics.lowStockItems, isEmpty);
+    expect(analytics.totalIncome, 0);
+    expect(analytics.totalExpense, 0);
+    expect(analytics.profitLoss, 0);
   });
 
   testWidgets('auth layout fits a compact Android viewport', (tester) async {

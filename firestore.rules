@@ -26,6 +26,16 @@ service cloud.firestore {
       return activeUser() ? currentUser().data.role : null;
     }
 
+    function effectiveProfileRole() {
+      return isAdmin()
+        ? 'admin'
+        : isOperatorLapangan()
+          ? 'operator_lapangan'
+          : isOperatorKeuangan()
+            ? 'operator_keuangan'
+            : profileRole();
+    }
+
     function hasRole(role) {
       return activeUser() && profileRole() == role;
     }
@@ -172,7 +182,7 @@ service cloud.firestore {
         isAdmin()
         || data.userId == request.auth.uid
         || data.targetRole == 'all'
-        || data.targetRole == profileRole()
+        || data.targetRole == effectiveProfileRole()
       );
     }
 
@@ -225,7 +235,7 @@ service cloud.firestore {
           'production_reminder'
         ]
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.targetRole == profileRole();
+        && request.resource.data.targetRole == effectiveProfileRole();
     }
 
     function userCanRefreshOwnNotification() {
@@ -233,7 +243,7 @@ service cloud.firestore {
         && validNotificationBase(resource.data.id, request.resource.data)
         && resource.data.userId == request.auth.uid
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.targetRole == profileRole()
+        && request.resource.data.targetRole == effectiveProfileRole()
         && request.resource.data.type == resource.data.type
         && request.resource.data.type in [
           'low_stock',
