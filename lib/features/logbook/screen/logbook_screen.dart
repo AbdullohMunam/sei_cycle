@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/delete_confirmation.dart';
+import '../../../core/utils/operation_feedback.dart';
 import '../../../theme/app_theme.dart';
 import '../../inventory/services/inventory_service.dart';
 import '../../profile/models/app_user.dart';
@@ -49,11 +51,26 @@ class _LogbookScreenState extends State<LogbookScreen>
           child: TabBarView(
             controller: _tabController,
             children: [
-              AyamModule(userId: widget.profile.uid),
-              MaggotModule(userId: widget.profile.uid),
-              CacingModule(userId: widget.profile.uid),
-              TanamanModule(userId: widget.profile.uid),
-              LeleModule(userId: widget.profile.uid),
+              AyamModule(
+                userId: widget.profile.uid,
+                canDeleteHistory: widget.profile.canDeleteLogbooks,
+              ),
+              MaggotModule(
+                userId: widget.profile.uid,
+                canDeleteHistory: widget.profile.canDeleteLogbooks,
+              ),
+              CacingModule(
+                userId: widget.profile.uid,
+                canDeleteHistory: widget.profile.canDeleteLogbooks,
+              ),
+              TanamanModule(
+                userId: widget.profile.uid,
+                canDeleteHistory: widget.profile.canDeleteLogbooks,
+              ),
+              LeleModule(
+                userId: widget.profile.uid,
+                canDeleteHistory: widget.profile.canDeleteLogbooks,
+              ),
             ],
           ),
         ),
@@ -256,9 +273,14 @@ Widget _buildSubmitRow({
 }
 
 class AyamModule extends StatefulWidget {
-  const AyamModule({required this.userId, super.key});
+  const AyamModule({
+    required this.userId,
+    required this.canDeleteHistory,
+    super.key,
+  });
 
   final String userId;
+  final bool canDeleteHistory;
 
   @override
   State<AyamModule> createState() => _AyamModuleState();
@@ -270,12 +292,20 @@ class _AyamModuleState extends _ModuleFormState<AyamModule> {
 
   @override
   String get userId => widget.userId;
+
+  @override
+  bool get canDeleteHistory => widget.canDeleteHistory;
 }
 
 class MaggotModule extends StatefulWidget {
-  const MaggotModule({required this.userId, super.key});
+  const MaggotModule({
+    required this.userId,
+    required this.canDeleteHistory,
+    super.key,
+  });
 
   final String userId;
+  final bool canDeleteHistory;
 
   @override
   State<MaggotModule> createState() => _MaggotModuleState();
@@ -287,12 +317,20 @@ class _MaggotModuleState extends _ModuleFormState<MaggotModule> {
 
   @override
   String get userId => widget.userId;
+
+  @override
+  bool get canDeleteHistory => widget.canDeleteHistory;
 }
 
 class CacingModule extends StatefulWidget {
-  const CacingModule({required this.userId, super.key});
+  const CacingModule({
+    required this.userId,
+    required this.canDeleteHistory,
+    super.key,
+  });
 
   final String userId;
+  final bool canDeleteHistory;
 
   @override
   State<CacingModule> createState() => _CacingModuleState();
@@ -304,12 +342,20 @@ class _CacingModuleState extends _ModuleFormState<CacingModule> {
 
   @override
   String get userId => widget.userId;
+
+  @override
+  bool get canDeleteHistory => widget.canDeleteHistory;
 }
 
 class TanamanModule extends StatefulWidget {
-  const TanamanModule({required this.userId, super.key});
+  const TanamanModule({
+    required this.userId,
+    required this.canDeleteHistory,
+    super.key,
+  });
 
   final String userId;
+  final bool canDeleteHistory;
 
   @override
   State<TanamanModule> createState() => _TanamanModuleState();
@@ -321,12 +367,20 @@ class _TanamanModuleState extends _ModuleFormState<TanamanModule> {
 
   @override
   String get userId => widget.userId;
+
+  @override
+  bool get canDeleteHistory => widget.canDeleteHistory;
 }
 
 class LeleModule extends StatefulWidget {
-  const LeleModule({required this.userId, super.key});
+  const LeleModule({
+    required this.userId,
+    required this.canDeleteHistory,
+    super.key,
+  });
 
   final String userId;
+  final bool canDeleteHistory;
 
   @override
   State<LeleModule> createState() => _LeleModuleState();
@@ -338,6 +392,9 @@ class _LeleModuleState extends _ModuleFormState<LeleModule> {
 
   @override
   String get userId => widget.userId;
+
+  @override
+  bool get canDeleteHistory => widget.canDeleteHistory;
 }
 
 abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
@@ -348,6 +405,7 @@ abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
 
   _ModuleSpec get spec;
   String get userId;
+  bool get canDeleteHistory;
 
   @override
   void initState() {
@@ -443,7 +501,12 @@ abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
       isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (context) => _HistorySheet(service: _service, spec: spec),
+      builder: (context) => _HistorySheet(
+        service: _service,
+        spec: spec,
+        userId: userId,
+        canDelete: canDeleteHistory,
+      ),
     );
   }
 
@@ -694,11 +757,53 @@ class _PhaseBadge extends StatelessWidget {
   }
 }
 
-class _HistorySheet extends StatelessWidget {
-  const _HistorySheet({required this.service, required this.spec});
+class _HistorySheet extends StatefulWidget {
+  const _HistorySheet({
+    required this.service,
+    required this.spec,
+    required this.userId,
+    required this.canDelete,
+  });
 
   final LogbookService service;
   final _ModuleSpec spec;
+  final String userId;
+  final bool canDelete;
+
+  @override
+  State<_HistorySheet> createState() => _HistorySheetState();
+}
+
+class _HistorySheetState extends State<_HistorySheet> {
+  late Future<List<LogbookEntry>> _historyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  void _reload() {
+    _historyFuture = widget.service.getHistoryByModule(widget.spec.moduleType);
+  }
+
+  Future<void> _delete(LogbookEntry entry) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Hapus riwayat?',
+      message: 'Catatan "${entry.title}" akan dihapus dari riwayat logbook.',
+    );
+    if (!confirmed || !mounted) return;
+
+    final success = await runOperationWithFeedback(
+      context,
+      operation: () =>
+          widget.service.softDelete(entry.id, userId: widget.userId),
+      successMessage: 'Riwayat logbook dihapus.',
+    );
+    if (!success || !mounted) return;
+    setState(_reload);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -709,7 +814,7 @@ class _HistorySheet extends StatelessWidget {
       maxChildSize: 0.92,
       builder: (context, controller) {
         return FutureBuilder<List<LogbookEntry>>(
-          future: service.getHistoryByModule(spec.moduleType),
+          future: _historyFuture,
           builder: (context, snapshot) {
             final entries = snapshot.data ?? const <LogbookEntry>[];
             return ListView(
@@ -717,7 +822,7 @@ class _HistorySheet extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
               children: [
                 Text(
-                  'Riwayat ${spec.label}',
+                  'Riwayat ${widget.spec.label}',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 12),
@@ -735,7 +840,12 @@ class _HistorySheet extends StatelessWidget {
                   )
                 else
                   for (final entry in entries) ...[
-                    _HistoryCard(entry: entry, spec: spec),
+                    _HistoryCard(
+                      entry: entry,
+                      spec: widget.spec,
+                      canDelete: widget.canDelete,
+                      onDelete: () => _delete(entry),
+                    ),
                     const SizedBox(height: 10),
                   ],
               ],
@@ -748,10 +858,17 @@ class _HistorySheet extends StatelessWidget {
 }
 
 class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.entry, required this.spec});
+  const _HistoryCard({
+    required this.entry,
+    required this.spec,
+    required this.canDelete,
+    required this.onDelete,
+  });
 
   final LogbookEntry entry;
   final _ModuleSpec spec;
+  final bool canDelete;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -780,6 +897,13 @@ class _HistoryCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
+                if (canDelete)
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline),
+                    color: AppColors.error,
+                    tooltip: 'Hapus riwayat',
+                  ),
               ],
             ),
             const SizedBox(height: 6),

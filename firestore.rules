@@ -509,6 +509,20 @@ service cloud.firestore {
           ])
         ) || userCanRefreshOwnNotification();
 
+      allow update: if canReadNotification(resource.data)
+        && (
+          isAdmin()
+          || resource.data.userId == request.auth.uid
+        )
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'isDeleted',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && request.resource.data.isDeleted == true
+        && request.resource.data.updatedBy == request.auth.uid;
+
       allow delete: if isAdmin();
     }
 

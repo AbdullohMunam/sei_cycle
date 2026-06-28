@@ -74,6 +74,16 @@ class NotificationService {
     });
   }
 
+  Future<void> delete(String id, {required String userId}) {
+    requireTrimmed(id, 'id');
+    requireTrimmed(userId, 'userId');
+    return _collection.doc(id).update({
+      'isDeleted': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedBy': userId,
+    });
+  }
+
   Future<void> markAllAsRead({
     required String userId,
     required String role,

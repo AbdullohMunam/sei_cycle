@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/delete_confirmation.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/operation_feedback.dart';
 import '../../../core/widgets/app_ui.dart';
@@ -45,6 +46,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
         role: widget.profile.effectiveRole,
       ),
       successMessage: 'Semua notifikasi ditandai sudah dibaca.',
+    );
+  }
+
+  Future<void> _delete(AppNotification notification) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Hapus notifikasi?',
+      message: 'Notifikasi "${notification.title}" akan dihapus dari daftar.',
+    );
+    if (!confirmed || !mounted) return;
+
+    await runOperationWithFeedback(
+      context,
+      operation: () =>
+          _service.delete(notification.id, userId: widget.profile.uid),
+      successMessage: 'Notifikasi dihapus.',
     );
   }
 
@@ -109,11 +126,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final notification = notifications[index];
-                    return _NotificationCard(
+                    final canDelete =
+                        widget.profile.isAdmin ||
+                        notification.userId == widget.profile.uid;
+                    return _DismissibleNotification(
                       notification: notification,
-                      onMarkRead: notification.isRead
-                          ? null
-                          : () => _markAsRead(notification),
+                      canDelete: canDelete,
+                      onDelete: () async {
+                        await _delete(notification);
+                        return false;
+                      },
+                      child: _NotificationCard(
+                        notification: notification,
+                        onMarkRead: notification.isRead
+                            ? null
+                            : () => _markAsRead(notification),
+                      ),
                     );
                   },
                 );
@@ -171,6 +199,41 @@ class _NotificationFilter {
   final String label;
   final IconData icon;
   final Color color;
+}
+
+class _DismissibleNotification extends StatelessWidget {
+  const _DismissibleNotification({
+    required this.notification,
+    required this.canDelete,
+    required this.onDelete,
+    required this.child,
+  });
+
+  final AppNotification notification;
+  final bool canDelete;
+  final Future<bool> Function() onDelete;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!canDelete) return child;
+
+    return Dismissible(
+      key: ValueKey('notification_${notification.id}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      child: child,
+    );
+  }
 }
 
 class _NotificationCard extends StatelessWidget {
@@ -247,15 +310,16 @@ class _NotificationCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (onMarkRead != null)
-              Center(
-                child: IconButton(
-                  onPressed: onMarkRead,
-                  icon: const Icon(Icons.check_circle_rounded),
-                  color: color,
-                  tooltip: 'Tandai dibaca',
-                ),
-              ),
+            Center(
+              child: onMarkRead == null
+                  ? const SizedBox(width: 8)
+                  : IconButton(
+                      onPressed: onMarkRead,
+                      icon: const Icon(Icons.check_circle_rounded),
+                      color: color,
+                      tooltip: 'Tandai dibaca',
+                    ),
+            ),
             Container(
               width: 4,
               margin: const EdgeInsets.fromLTRB(8, 18, 12, 18),
