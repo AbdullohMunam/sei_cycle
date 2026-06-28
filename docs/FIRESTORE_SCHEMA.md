@@ -108,11 +108,14 @@ Document ID: `ayam_kampung`, `maggot_bsf`, `cacing_tanah`, `lele`, `tanaman`.
 {
   "id": "uuid",
   "name": "Pakan ayam",
+  "itemKey": "pakan_ayam",
+  "moduleType": "ayam_kampung",
   "category": "Pakan",
   "unit": "kg",
   "currentStock": 20,
   "minStock": 25,
   "isLowStock": true,
+  "location": "",
   "createdBy": "uid",
   "updatedBy": "uid",
   "createdAt": "timestamp",
@@ -121,7 +124,54 @@ Document ID: `ayam_kampung`, `maggot_bsf`, `cacing_tanah`, `lele`, `tanaman`.
 }
 ```
 
-`isLowStock` dihitung saat save karena Firestore tidak dapat membandingkan dua field dalam query (`currentStock <= minStock`).
+`itemKey` dipakai untuk integrasi otomatis dari logbook ke stok. Jika data lama belum punya `itemKey`, model Flutter membuat fallback dari `name` dalam format snake_case. `isLowStock` dihitung saat save karena Firestore tidak dapat membandingkan dua field dalam query (`currentStock <= minStock`).
+
+## `inventory_transactions/{id}`
+
+```json
+{
+  "id": "uuid",
+  "itemId": "inventory-id",
+  "itemName": "Dedak Padi",
+  "itemKey": "dedak_padi",
+  "moduleType": "ayam_kampung",
+  "logbookId": "logbook-id",
+  "type": "out",
+  "quantity": 5,
+  "unit": "kg",
+  "beforeStock": 100,
+  "afterStock": 95,
+  "notes": "Otomatis dari logbook ...",
+  "transactionDate": "timestamp",
+  "createdBy": "uid",
+  "createdAt": "timestamp",
+  "isReversed": false,
+  "reversedAt": null,
+  "reversedBy": ""
+}
+```
+
+`type` valid: `in`, `out`, `adjustment`, `rollback`. Semua perubahan stok dari Logbook wajib punya histori di collection ini.
+
+## `production_results/{id}`
+
+```json
+{
+  "id": "uuid",
+  "logbookId": "logbook-id",
+  "moduleType": "ayam_kampung",
+  "productName": "Telur Ayam",
+  "quantity": 85,
+  "unit": "butir",
+  "qualityStatus": "normal",
+  "harvestDate": "timestamp",
+  "notes": "Otomatis dari logbook ...",
+  "createdBy": "uid",
+  "createdAt": "timestamp"
+}
+```
+
+Dipakai untuk hasil produksi/panen dari Logbook seperti telur, maggot segar, kascing, kascing cair, lele panen, dan hasil panen tanaman.
 
 ## `schedules/{id}`
 

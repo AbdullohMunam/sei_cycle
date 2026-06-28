@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../theme/app_theme.dart';
+import '../../inventory/services/inventory_service.dart';
 import '../../profile/models/app_user.dart';
 import '../models/logbook_entry.dart';
 import '../services/logbook_service.dart';
@@ -374,6 +375,17 @@ abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
       for (final entry in _values.entries) {
         details[entry.key] = _typedValue(entry.value);
       }
+      final warnings = await _service.previewInventoryStockWarnings(
+        moduleType: spec.moduleType,
+        details: details,
+      );
+      if (warnings.isNotEmpty && mounted) {
+        final confirmed = await _confirmNegativeStock(warnings);
+        if (!confirmed) {
+          setState(() => _saving = false);
+          return;
+        }
+      }
       await _service.createDailyEntry(
         moduleType: spec.moduleType,
         title: spec.title,
@@ -392,6 +404,37 @@ abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<bool> _confirmNegativeStock(
+    List<InventoryStockWarning> warnings,
+  ) async {
+    final message = warnings
+        .map(
+          (warning) =>
+              '${warning.itemName}: stok ${_number(warning.currentStock)} ${warning.unit}, keluar ${_number(warning.requestedQuantity)} ${warning.unit}, sisa ${_number(warning.afterStock)} ${warning.unit}.',
+        )
+        .join('\n');
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Stok tidak mencukupi'),
+            content: Text(
+              'Beberapa stok akan menjadi minus. Tetap simpan catatan?\n\n$message',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Tetap Simpan'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   Future<void> _openHistory() async {
@@ -421,6 +464,52 @@ abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
     return double.tryParse(trimmed.replaceAll(',', '.')) ?? trimmed;
   }
 
+  List<_BannerStat> _bannerStats() {
+    String value(String key, String unit, {String fallback = '-'}) {
+      final raw = (_values[key] ?? '').trim();
+      if (raw.isEmpty) return fallback;
+      return unit.isEmpty ? raw : '$raw $unit';
+    }
+
+    return switch (spec.moduleType) {
+      'ayam_kampung' => [
+        _BannerStat('Populasi', value('populasi_aktif', 'ekor')),
+        _BannerStat(
+          'Produksi Hari Ini',
+          value('produksi_telur_hari_ini', 'butir'),
+        ),
+        _BannerStat(
+          'Mortalitas',
+          value('mortalitas_hari_ini', 'ekor', fallback: '0 ekor'),
+        ),
+      ],
+      'maggot_bsf' => [
+        _BannerStat('Limbah Masuk', value('volume_limbah_masuk_kg', 'kg')),
+        _BannerStat(
+          'Fase Larva',
+          value('fase_larva_hari', 'hari', fallback: '12 hari'),
+        ),
+        _BannerStat('Est. Panen', value('estimasi_panen_kg', 'kg')),
+      ],
+      'cacing_tanah' => [
+        _BannerStat('Media', value('media_cacing_kg', 'kg')),
+        _BannerStat('Kelembaban', value('kelembapan_media_persen', '%')),
+        _BannerStat('Kascing', value('panen_kascing_kg', 'kg')),
+      ],
+      'tanaman' => [
+        _BannerStat('Komoditas', value('jenis_tanaman', '')),
+        _BannerStat('Usia', value('usia_tanaman', 'hari')),
+        _BannerStat('Pupuk', value('pupuk_kascing_cair_liter', 'L/m2')),
+      ],
+      'lele' => [
+        _BannerStat('Tebar Benih', value('jumlah_ikan', 'ekor')),
+        _BannerStat('Survival Rate', value('kondisi_air', '%')),
+        _BannerStat('Pakan/Hari', value('pakan_lele_kg', 'kg')),
+      ],
+      _ => spec.stats,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -432,7 +521,7 @@ abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
             desc: spec.bannerDesc,
             icon: spec.icon,
             color: spec.color,
-            stats: spec.stats,
+            stats: _bannerStats(),
           ),
           const SizedBox(height: 20),
           LayoutBuilder(
@@ -462,8 +551,9 @@ abstract class _ModuleFormState<T extends StatefulWidget> extends State<T> {
                                     suffix: field.suffix,
                                     maxLines: field.maxLines,
                                     initialValue: field.initialValue,
-                                    onChanged: (value) =>
-                                        _values[field.key] = value,
+                                    onChanged: (value) => setState(
+                                      () => _values[field.key] = value,
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -645,7 +735,7 @@ class _HistorySheet extends StatelessWidget {
                   )
                 else
                   for (final entry in entries) ...[
-                    _HistoryCard(entry: entry, color: spec.color),
+                    _HistoryCard(entry: entry, spec: spec),
                     const SizedBox(height: 10),
                   ],
               ],
@@ -658,13 +748,14 @@ class _HistorySheet extends StatelessWidget {
 }
 
 class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.entry, required this.color});
+  const _HistoryCard({required this.entry, required this.spec});
 
   final LogbookEntry entry;
-  final Color color;
+  final _ModuleSpec spec;
 
   @override
   Widget build(BuildContext context) {
+    final color = spec.color;
     final date = DateFormat(
       'd MMM yyyy, HH:mm',
       'id_ID',
@@ -672,6 +763,7 @@ class _HistoryCard extends StatelessWidget {
     final quantity = entry.quantity > 0 && entry.unit.trim().isNotEmpty
         ? '${_number(entry.quantity)} ${entry.unit}'
         : null;
+    final details = _detailItems(entry.details, spec);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -691,9 +783,36 @@ class _HistoryCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(date, style: const TextStyle(color: AppColors.textMuted)),
-            const SizedBox(height: 6),
-            Text(entry.activityType),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _HistoryBadge(
+                  icon: Icons.calendar_today_outlined,
+                  label: date,
+                  color: AppColors.textMuted,
+                ),
+                _HistoryBadge(
+                  icon: Icons.check_circle_outline,
+                  label: entry.status.isEmpty ? 'completed' : entry.status,
+                  color: AppColors.success,
+                ),
+                if (quantity != null)
+                  _HistoryBadge(
+                    icon: Icons.straighten_outlined,
+                    label: quantity,
+                    color: color,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              entry.activityType,
+              style: const TextStyle(
+                color: AppColors.textMedium,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             if (entry.note.trim().isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
@@ -703,11 +822,15 @@ class _HistoryCard extends StatelessWidget {
                 style: const TextStyle(color: AppColors.textMuted),
               ),
             ],
-            if (quantity != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                quantity,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            if (details.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final item in details)
+                    _DetailPill(label: item.label, value: item.value),
+                ],
               ),
             ],
           ],
@@ -715,6 +838,98 @@ class _HistoryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HistoryBadge extends StatelessWidget {
+  const _HistoryBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailPill extends StatelessWidget {
+  const _DetailPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.field,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textDark,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailItem {
+  const _DetailItem({required this.label, required this.value});
+
+  final String label;
+  final String value;
 }
 
 class _BannerStat {
@@ -1338,6 +1553,20 @@ const _tanamanSpec = _ModuleSpec(
           initialValue: '2',
         ),
         _FieldSpec(
+          key: 'pupuk_kascing_kg',
+          label: 'Pupuk Kascing Padat',
+          hint: 'kg',
+          type: TextInputType.number,
+          suffix: 'kg',
+        ),
+        _FieldSpec(
+          key: 'hasil_panen_kg',
+          label: 'Hasil Panen',
+          hint: 'kg',
+          type: TextInputType.number,
+          suffix: 'kg',
+        ),
+        _FieldSpec(
           key: 'jadwal_pemupukan_berikutnya',
           label: 'Jadwal Pemupukan Berikutnya',
           hint: 'DD/MM/YYYY',
@@ -1434,12 +1663,19 @@ const _leleSpec = _ModuleSpec(
           initialValue: '150',
         ),
         _FieldSpec(
-          key: 'panen_lele_kg',
+          key: 'estimasi_panen_hari',
           label: 'Estimasi Panen',
           hint: 'hari lagi',
           type: TextInputType.number,
           suffix: 'hari',
           initialValue: '30',
+        ),
+        _FieldSpec(
+          key: 'panen_lele_kg',
+          label: 'Panen Lele',
+          hint: 'kg',
+          type: TextInputType.number,
+          suffix: 'kg',
         ),
         _FieldSpec(
           key: 'catatan_kolam',
@@ -1455,3 +1691,41 @@ const _leleSpec = _ModuleSpec(
 String _number(double value) => value == value.roundToDouble()
     ? value.toStringAsFixed(0)
     : value.toString();
+
+List<_DetailItem> _detailItems(Map<String, dynamic> details, _ModuleSpec spec) {
+  if (details.isEmpty) return const [];
+  final labels = <String, String>{
+    if (spec.slider != null) spec.slider!.key: spec.slider!.label,
+    for (final section in spec.sections)
+      for (final field in section.fields) field.key: field.label,
+  };
+
+  final items = <_DetailItem>[];
+  for (final entry in details.entries) {
+    final value = _displayDetailValue(entry.value);
+    if (value.isEmpty) continue;
+    items.add(
+      _DetailItem(
+        label: labels[entry.key] ?? _fallbackDetailLabel(entry.key),
+        value: value,
+      ),
+    );
+  }
+  return items;
+}
+
+String _displayDetailValue(Object? value) {
+  if (value == null) return '';
+  if (value is num) return _number(value.toDouble());
+  if (value is bool) return value ? 'Ya' : 'Tidak';
+  final text = value.toString().trim();
+  return text;
+}
+
+String _fallbackDetailLabel(String key) {
+  final words = key
+      .split('_')
+      .where((part) => part.trim().isNotEmpty)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}');
+  return words.join(' ');
+}

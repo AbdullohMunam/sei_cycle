@@ -381,6 +381,33 @@ service cloud.firestore {
     }
 
     /*
+      INVENTORY TRANSACTIONS
+      Histori perubahan stok dari logbook.
+    */
+    match /inventory_transactions/{transactionId} {
+      allow read: if canViewAppData();
+      allow create: if canManageOperations()
+        && request.resource.data.id == transactionId
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if canManageOperations()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isAdmin();
+    }
+
+    /*
+      PRODUCTION RESULTS
+      Hasil produksi/panen yang berasal dari logbook.
+    */
+    match /production_results/{resultId} {
+      allow read: if canViewAppData();
+      allow create: if canManageOperations()
+        && request.resource.data.id == resultId
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    /*
       SCHEDULES / KALENDER OPERASIONAL
     */
     match /schedules/{scheduleId} {

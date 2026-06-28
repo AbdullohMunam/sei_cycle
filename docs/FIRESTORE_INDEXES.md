@@ -15,6 +15,8 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `logbooks` | AI recommendation logbook 45 hari terakhir | `isDeleted ASC`, `activityDate DESC` |
 | `inventory` | item aktif, stok menipis di atas, urut nama | `isDeleted ASC`, `isLowStock DESC`, `name ASC` |
 | `inventory` | dashboard stok rendah maksimal 5 item | `isDeleted ASC`, `isLowStock ASC`, `name ASC` |
+| `inventory` | lookup otomatis logbook berdasarkan itemKey | `itemKey ASC`, `isDeleted ASC` |
+| `inventory` | filter stok rendah per kategori | `isLowStock ASC`, `category ASC` |
 | `schedules` | jadwal aktif urut tanggal | `isDeleted ASC`, `date ASC` |
 | `schedules` | dashboard jadwal pending | `isDeleted ASC`, `status ASC` |
 | `schedules` | dashboard jadwal overdue | `isDeleted ASC`, `status ASC`, `date ASC` |
@@ -38,6 +40,8 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `notifications` | filter tipe notifikasi role/global | `isDeleted ASC`, `type ASC`, `targetRole ASC`, `createdAt DESC` |
 | `notifications` | mark all unread personal | `isDeleted ASC`, `isRead ASC`, `userId ASC` |
 | `notifications` | mark all unread role/global | `isDeleted ASC`, `isRead ASC`, `targetRole ASC` |
+| `notifications` | low stock unread terbaru | `type ASC`, `isRead ASC`, `createdAt DESC` |
+| `notifications` | cegah duplikasi notifikasi related item | `relatedCollection ASC`, `relatedId ASC`, `createdAt DESC` |
 
 ## Disiapkan Untuk Collection Pendukung
 
@@ -45,6 +49,11 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | --- | --- | --- |
 | `report_metadata` | laporan per tipe/periode | `type ASC`, `isDeleted ASC`, `periodStart DESC` |
 | `recommendations` | snapshot rekomendasi opsional per modul | `moduleType ASC`, `isResolved ASC`, `priority ASC`, `createdAt DESC` |
+| `inventory_transactions` | histori stok per logbook | `logbookId ASC`, `transactionDate DESC` |
+| `inventory_transactions` | histori stok per item | `itemId ASC`, `transactionDate DESC` |
+| `inventory_transactions` | histori stok per modul | `moduleType ASC`, `transactionDate DESC` |
+| `production_results` | hasil produksi per modul | `moduleType ASC`, `harvestDate DESC` |
+| `production_results` | hasil produksi per logbook | `logbookId ASC`, `harvestDate DESC` |
 
 ## Catatan
 

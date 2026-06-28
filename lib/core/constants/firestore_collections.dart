@@ -3,6 +3,8 @@ abstract final class FirestoreCollections {
   static const farmModules = 'farm_modules';
   static const logbooks = 'logbooks';
   static const inventory = 'inventory';
+  static const inventoryTransactions = 'inventory_transactions';
+  static const productionResults = 'production_results';
   static const schedules = 'schedules';
   static const notifications = 'notifications';
   static const educationContents = 'education_contents';

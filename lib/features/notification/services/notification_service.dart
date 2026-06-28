@@ -189,6 +189,44 @@ class NotificationService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> createLowStockNotificationIfNeeded({
+    required String userId,
+    required String itemId,
+    required String name,
+    required double currentStock,
+    required double minStock,
+    required String unit,
+    String targetRole = 'admin',
+  }) async {
+    requireTrimmed(userId, 'userId');
+    requireTrimmed(itemId, 'itemId');
+    requireTrimmed(name, 'name');
+    if (currentStock > minStock) return;
+
+    final id = 'low_stock_${userId}_$itemId';
+    final existing = await _collection.doc(id).get();
+    final data = existing.data();
+    if (existing.exists &&
+        data?['isDeleted'] != true &&
+        data?['isRead'] != true) {
+      return;
+    }
+
+    await _collection.doc(id).set({
+      'id': id,
+      'title': 'Stok $name rendah',
+      'body': 'Stok $name menipis. Sisa ${_number(currentStock)} $unit.',
+      'type': 'low_stock',
+      'targetRole': targetRole,
+      'userId': userId,
+      'relatedCollection': FirestoreCollections.inventory,
+      'relatedId': itemId,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isDeleted': false,
+    }, SetOptions(merge: true));
+  }
+
   Future<void> createScheduleOverdueAlert({
     required String scheduleId,
     required String title,

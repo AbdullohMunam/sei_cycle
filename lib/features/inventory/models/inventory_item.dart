@@ -3,28 +3,34 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/utils/firestore_fields.dart';
 
 class InventoryItem {
-  const InventoryItem({
+  InventoryItem({
     required this.id,
     required this.name,
+    String? itemKey,
+    this.moduleType = '',
     required this.category,
     required this.unit,
     required this.currentStock,
     required this.minStock,
     required this.isLowStock,
+    this.location = '',
     required this.createdBy,
     required this.updatedBy,
     required this.createdAt,
     required this.updatedAt,
     required this.isDeleted,
-  });
+  }) : itemKey = itemKey ?? _fallbackItemKey(name);
 
   final String id;
   final String name;
+  final String itemKey;
+  final String moduleType;
   final String category;
   final String unit;
   final double currentStock;
   final double minStock;
   final bool isLowStock;
+  final String location;
   final String createdBy;
   final String updatedBy;
   final DateTime createdAt;
@@ -43,6 +49,11 @@ class InventoryItem {
     return InventoryItem(
       id: stringField(data, const ['id'], fallback: document.id),
       name: stringField(data, const ['name']),
+      itemKey: stringField(data, const [
+        'itemKey',
+        'item_key',
+      ], fallback: _fallbackItemKey(stringField(data, const ['name']))),
+      moduleType: stringField(data, const ['moduleType', 'module_type']),
       category: stringField(data, const ['category']),
       unit: stringField(data, const ['unit']),
       currentStock: currentStock,
@@ -51,6 +62,7 @@ class InventoryItem {
         'isLowStock',
         'is_low_stock',
       ], fallback: currentStock <= minStock),
+      location: stringField(data, const ['location']),
       createdBy: stringField(data, const ['createdBy', 'created_by']),
       updatedBy: stringField(data, const ['updatedBy', 'updated_by']),
       createdAt: dateTimeField(data, const ['createdAt', 'created_at']),
@@ -63,11 +75,14 @@ class InventoryItem {
     return {
       'id': id,
       'name': name,
+      'itemKey': itemKey,
+      'moduleType': moduleType,
       'category': category,
       'unit': unit,
       'currentStock': currentStock,
       'minStock': minStock,
       'isLowStock': isLowStock,
+      'location': location,
       'createdBy': createdBy,
       'updatedBy': updatedBy,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -75,4 +90,13 @@ class InventoryItem {
       'isDeleted': isDeleted,
     };
   }
+}
+
+String _fallbackItemKey(String name) {
+  return name
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'_+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
 }

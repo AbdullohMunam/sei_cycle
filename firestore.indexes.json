@@ -53,6 +53,22 @@
       ]
     },
     {
+      "collectionGroup": "inventory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "itemKey", "order": "ASCENDING" },
+        { "fieldPath": "isDeleted", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inventory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isLowStock", "order": "ASCENDING" },
+        { "fieldPath": "category", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "schedules",
       "queryScope": "COLLECTION",
       "fields": [
@@ -236,6 +252,24 @@
       "collectionGroup": "notifications",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "isRead", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "relatedCollection", "order": "ASCENDING" },
+        { "fieldPath": "relatedId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "isDeleted", "order": "ASCENDING" },
         { "fieldPath": "isRead", "order": "ASCENDING" },
         { "fieldPath": "userId", "order": "ASCENDING" }
@@ -267,6 +301,46 @@
         { "fieldPath": "isResolved", "order": "ASCENDING" },
         { "fieldPath": "priority", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inventory_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "logbookId", "order": "ASCENDING" },
+        { "fieldPath": "transactionDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inventory_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "itemId", "order": "ASCENDING" },
+        { "fieldPath": "transactionDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inventory_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "moduleType", "order": "ASCENDING" },
+        { "fieldPath": "transactionDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "production_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "moduleType", "order": "ASCENDING" },
+        { "fieldPath": "harvestDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "production_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "logbookId", "order": "ASCENDING" },
+        { "fieldPath": "harvestDate", "order": "DESCENDING" }
       ]
     }
   ],
