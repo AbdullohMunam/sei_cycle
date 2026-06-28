@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/firestore_collections.dart';
 import '../../../theme/app_theme.dart';
+import '../../circular_flow/services/circular_flow_service.dart';
 import '../models/dashboard_summary.dart';
 
 class DashboardService {
@@ -28,6 +29,7 @@ class DashboardService {
       getTodayLogbooks(startOfDay: startOfDay, endOfDay: endOfDay),
       getTodaySchedules(startOfDay: startOfDay, endOfDay: endOfDay),
       getLowStockInventory(),
+      getRecentCircularFlows(),
       includeFinance
           ? getMonthlyFinanceSummary(
               startOfMonth: startOfMonth,
@@ -44,7 +46,8 @@ class DashboardService {
         results[2] as List<QueryDocumentSnapshot<Map<String, dynamic>>>;
     final lowStockDocs =
         results[3] as List<QueryDocumentSnapshot<Map<String, dynamic>>>;
-    final financeSummary = results[4] as FinanceDashboardSummary?;
+    final circularFlows = results[4] as List<DashboardCircularFlow>;
+    final financeSummary = results[5] as FinanceDashboardSummary?;
 
     final activities = _activitiesFromFirestore(todayLogbooks, todaySchedules);
     final revenueItems = _revenueItemsFromFinance(financeSummary);
@@ -60,6 +63,9 @@ class DashboardService {
           (financeSummary?.income ?? 0) - (financeSummary?.expense ?? 0),
       recentActivities: activities.isEmpty ? fallbackActivities : activities,
       revenueItems: revenueItems.isEmpty ? fallbackRevenueItems : revenueItems,
+      circularFlows: circularFlows.isEmpty
+          ? fallbackCircularFlows
+          : circularFlows,
       lowStockPreview: [
         for (final document in lowStockDocs.take(5))
           _lowStockItemFromDocument(document),
@@ -144,6 +150,25 @@ class DashboardService {
       lowStock.sort(_compareString('name'));
       return lowStock.take(20).toList();
     }
+  }
+
+  Future<List<DashboardCircularFlow>> getRecentCircularFlows({
+    int limit = 5,
+  }) async {
+    final flows = await CircularFlowService(
+      firestore: _firestore,
+    ).getRecentFlows(limit: limit);
+    return [
+      for (final flow in flows)
+        DashboardCircularFlow(
+          sourceModuleType: flow.sourceModuleType,
+          destinationModuleType: flow.destinationModuleType,
+          materialName: flow.materialName,
+          quantity: flow.quantity,
+          unit: flow.unit,
+          notes: flow.notes,
+        ),
+    ];
   }
 
   Future<FinanceDashboardSummary?> getMonthlyFinanceSummary({
@@ -413,6 +438,50 @@ const fallbackRevenueItems = [
     amount: 3000000,
     portion: 0.15,
     color: AppColors.success,
+  ),
+];
+
+const fallbackCircularFlows = [
+  DashboardCircularFlow(
+    sourceModuleType: 'tanaman',
+    destinationModuleType: 'maggot_bsf',
+    materialName: 'Sisa organik',
+    quantity: 12,
+    unit: 'kg',
+    notes:
+        'Sisa tanaman dan limbah organik digunakan sebagai bahan media maggot.',
+  ),
+  DashboardCircularFlow(
+    sourceModuleType: 'maggot_bsf',
+    destinationModuleType: 'ayam_kampung',
+    materialName: 'Maggot segar',
+    quantity: 3,
+    unit: 'kg',
+    notes: 'Maggot digunakan sebagai sumber protein tambahan untuk ayam.',
+  ),
+  DashboardCircularFlow(
+    sourceModuleType: 'ayam_kampung',
+    destinationModuleType: 'cacing_tanah',
+    materialName: 'Limbah kandang',
+    quantity: 18,
+    unit: 'kg',
+    notes: 'Limbah kandang diolah menjadi media dan pakan cacing.',
+  ),
+  DashboardCircularFlow(
+    sourceModuleType: 'cacing_tanah',
+    destinationModuleType: 'tanaman',
+    materialName: 'Kascing',
+    quantity: 20,
+    unit: 'kg',
+    notes: 'Kascing digunakan sebagai pupuk organik tanaman.',
+  ),
+  DashboardCircularFlow(
+    sourceModuleType: 'lele',
+    destinationModuleType: 'tanaman',
+    materialName: 'Air kolam kaya nutrisi',
+    quantity: 80,
+    unit: 'liter',
+    notes: 'Air kolam dimanfaatkan untuk penyiraman dan nutrisi tanaman.',
   ),
 ];
 

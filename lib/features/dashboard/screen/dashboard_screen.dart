@@ -72,7 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   subtitle:
                       'Siklus tertutup Kebun Sei - zero waste integrated farming',
                 ),
-                const NutrientFlowCard(),
+                NutrientFlowCard(flows: summary.circularFlows),
                 const SizedBox(height: 28),
                 SectionHeader(
                   title: 'Aktivitas Hari Ini',
@@ -427,22 +427,16 @@ class _StatCard extends StatelessWidget {
 }
 
 class NutrientFlowCard extends StatelessWidget {
-  const NutrientFlowCard({super.key});
+  const NutrientFlowCard({required this.flows, super.key});
+
+  final List<DashboardCircularFlow> flows;
 
   @override
   Widget build(BuildContext context) {
-    const nodes = [
-      _FlowNode('Ayam', Icons.egg_alt_outlined, AppColors.warning),
-      _FlowNode('Limbah', Icons.recycling_outlined, AppColors.accentBrown),
-      _FlowNode(
-        'Maggot',
-        Icons.bug_report_outlined,
-        AppColors.accentLightGreen,
-      ),
-      _FlowNode('Cacing', Icons.grass_outlined, AppColors.primaryGreen),
-      _FlowNode('Lele', Icons.water_drop_outlined, AppColors.info),
-      _FlowNode('Tanaman', Icons.eco_outlined, AppColors.success),
-    ];
+    final nodes = _flowNodes(flows);
+    final description = flows.isEmpty
+        ? 'Setiap limbah menjadi sumber daya baru: kotoran dan sisa organik diolah maggot/cacing, lalu kembali menjadi pakan, kascing, dan nutrisi tanaman.'
+        : flows.map((flow) => '${flow.materialName}: ${flow.notes}').join(' ');
 
     return Card(
       child: Padding(
@@ -470,7 +464,7 @@ class NutrientFlowCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'Setiap limbah menjadi sumber daya baru: kotoran dan sisa organik diolah maggot/cacing, lalu kembali menjadi pakan, kascing, dan nutrisi tanaman.',
+              description,
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
@@ -482,12 +476,83 @@ class NutrientFlowCard extends StatelessWidget {
   }
 }
 
+List<_FlowNode> _flowNodes(List<DashboardCircularFlow> flows) {
+  if (flows.isEmpty) {
+    return const [
+      _FlowNode('Ayam', Icons.egg_alt_outlined, AppColors.warning),
+      _FlowNode('Limbah', Icons.recycling_outlined, AppColors.accentBrown),
+      _FlowNode(
+        'Maggot',
+        Icons.bug_report_outlined,
+        AppColors.accentLightGreen,
+      ),
+      _FlowNode('Cacing', Icons.grass_outlined, AppColors.primaryGreen),
+      _FlowNode('Lele', Icons.water_drop_outlined, AppColors.info),
+      _FlowNode('Tanaman', Icons.eco_outlined, AppColors.success),
+    ];
+  }
+
+  final nodes = <_FlowNode>[];
+  void add(String moduleType) {
+    if (nodes.any((node) => node.moduleType == moduleType)) return;
+    nodes.add(_FlowNode.fromModule(moduleType));
+  }
+
+  for (final flow in flows) {
+    add(flow.sourceModuleType);
+    add(flow.destinationModuleType);
+  }
+  return nodes;
+}
+
 class _FlowNode {
-  const _FlowNode(this.label, this.icon, this.color);
+  const _FlowNode(this.label, this.icon, this.color, [this.moduleType = '']);
+
+  factory _FlowNode.fromModule(String moduleType) {
+    return switch (moduleType) {
+      'ayam_kampung' => const _FlowNode(
+        'Ayam',
+        Icons.egg_alt_outlined,
+        AppColors.warning,
+        'ayam_kampung',
+      ),
+      'maggot_bsf' => const _FlowNode(
+        'Maggot',
+        Icons.bug_report_outlined,
+        AppColors.accentLightGreen,
+        'maggot_bsf',
+      ),
+      'cacing_tanah' => const _FlowNode(
+        'Cacing',
+        Icons.grass_outlined,
+        AppColors.primaryGreen,
+        'cacing_tanah',
+      ),
+      'lele' => const _FlowNode(
+        'Lele',
+        Icons.water_drop_outlined,
+        AppColors.info,
+        'lele',
+      ),
+      'tanaman' => const _FlowNode(
+        'Tanaman',
+        Icons.eco_outlined,
+        AppColors.success,
+        'tanaman',
+      ),
+      _ => _FlowNode(
+        moduleType.isEmpty ? 'Aliran' : moduleType,
+        Icons.recycling_outlined,
+        AppColors.accentBrown,
+        moduleType,
+      ),
+    };
+  }
 
   final String label;
   final IconData icon;
   final Color color;
+  final String moduleType;
 }
 
 class _FlowChip extends StatelessWidget {
@@ -756,6 +821,7 @@ final _fallbackSummary = DashboardSummary(
   monthlyProfit: 0,
   recentActivities: fallbackActivities,
   revenueItems: fallbackRevenueItems,
+  circularFlows: fallbackCircularFlows,
   lowStockPreview: const [],
   financeVisible: false,
 );

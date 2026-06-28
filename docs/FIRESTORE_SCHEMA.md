@@ -11,6 +11,9 @@ Nama field canonical memakai camelCase. Model Dart masih membaca beberapa field 
 | `users` | aktif | Profil Firebase Auth dan role aplikasi. |
 | `logbooks` | aktif | Catatan aktivitas operasional per moduleType. |
 | `inventory` | aktif | Stok dan kebutuhan operasional. |
+| `inventory_transactions` | aktif | Histori perubahan stok otomatis dari Logbook. |
+| `production_results` | aktif | Hasil produksi/panen dari Logbook. |
+| `circular_flows` | aktif | Aliran nutrisi antar modul untuk Dashboard. |
 | `schedules` | aktif | Jadwal operasional dan status pelaksanaan. |
 | `notifications` | didukung | Notifikasi in-app ringan, tanpa FCM server/Cloud Functions. |
 | `education_contents` | aktif | Artikel, video link, dan SOP tanpa Storage. |
@@ -172,6 +175,26 @@ Document ID: `ayam_kampung`, `maggot_bsf`, `cacing_tanah`, `lele`, `tanaman`.
 ```
 
 Dipakai untuk hasil produksi/panen dari Logbook seperti telur, maggot segar, kascing, kascing cair, lele panen, dan hasil panen tanaman.
+
+## `circular_flows/{id}`
+
+```json
+{
+  "id": "tanaman_to_maggot_bsf",
+  "sourceModuleType": "tanaman",
+  "destinationModuleType": "maggot_bsf",
+  "materialName": "Sisa organik",
+  "quantity": 12,
+  "unit": "kg",
+  "flowDate": "timestamp",
+  "notes": "Sisa tanaman dan limbah organik digunakan sebagai bahan media maggot.",
+  "createdAt": "timestamp"
+}
+```
+
+Dipakai Dashboard untuk section Sistem Aliran Nutrisi. Query utama mengurutkan
+`flowDate DESC`; jika collection kosong, Dashboard tetap memakai fallback
+referensi agar UI tidak blank.
 
 ## `schedules/{id}`
 

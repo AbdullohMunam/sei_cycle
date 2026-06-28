@@ -168,7 +168,10 @@ Rules. Tidak ada script seeder Node.js atau Firebase Admin SDK.
 | `users` | UID Firebase Auth | Profil dan role pengguna |
 | `farm_modules` | ID modul tetap | Master lima modul Kebun Sei |
 | `logbooks` | UUID | Catatan aktivitas operasional |
-| `inventory` | UUID | Stok dan batas minimum |
+| `inventory` | UUID | Stok, item key, dan batas minimum |
+| `inventory_transactions` | UUID | Histori perubahan stok dari Logbook |
+| `production_results` | UUID | Hasil produksi atau panen dari Logbook |
+| `circular_flows` | ID aliran tetap/UUID | Aliran nutrisi antar modul untuk Dashboard |
 | `schedules` | UUID | Kalender dan status pekerjaan |
 | `education_contents` | UUID | Artikel, video URL, dan SOP |
 | `finance_transactions` | UUID | Pemasukan dan pengeluaran admin/operator keuangan |
@@ -178,6 +181,57 @@ Rules. Tidak ada script seeder Node.js atau Firebase Admin SDK.
 
 Detail field tersedia di [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md).
 Panduan data sampel demo tersedia di [docs/SAMPLE_DATA.md](docs/SAMPLE_DATA.md).
+
+## Data Demo, Logbook, dan Dashboard
+
+Seeder demo berjalan dari aplikasi Flutter, bukan Node.js, Firebase Admin SDK,
+atau credential server. Login sebagai admin aktif, buka **Profil**, lalu tekan
+**Seed sampel**. Seeder membuat data sample untuk:
+
+- `farm_modules`
+- `logbooks`
+- `inventory`
+- `inventory_transactions`
+- `production_results`
+- `circular_flows`
+- `schedules`
+- `finance_transactions`
+- `notifications`
+
+Alur data Logbook:
+
+```text
+Logbook form
+  -> logbooks
+  -> inventory update
+  -> inventory_transactions
+  -> production_results
+  -> notifications low_stock
+```
+
+Alur data Dashboard:
+
+```text
+Dashboard
+  -> farm_modules
+  -> logbooks
+  -> inventory
+  -> schedules
+  -> finance_transactions
+  -> circular_flows
+  -> production_results
+```
+
+Deploy rules dan indexes:
+
+```bash
+firebase deploy --only firestore:rules
+firebase deploy --only firestore:indexes
+```
+
+Catatan scope MVP: Firebase Storage belum dipakai, rekomendasi AI masih
+rule-based/placeholder, dan credential seperti `.env`, `serviceAccountKey.json`,
+token Firebase, atau private key tidak boleh di-commit.
 
 ## Role dan Akses
 

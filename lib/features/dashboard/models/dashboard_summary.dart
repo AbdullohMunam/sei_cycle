@@ -46,6 +46,24 @@ class LowStockDashboardItem {
   final String unit;
 }
 
+class DashboardCircularFlow {
+  const DashboardCircularFlow({
+    required this.sourceModuleType,
+    required this.destinationModuleType,
+    required this.materialName,
+    required this.quantity,
+    required this.unit,
+    required this.notes,
+  });
+
+  final String sourceModuleType;
+  final String destinationModuleType;
+  final String materialName;
+  final double quantity;
+  final String unit;
+  final String notes;
+}
+
 class DashboardSummary {
   const DashboardSummary({
     required this.activeModuleCount,
@@ -57,6 +75,7 @@ class DashboardSummary {
     required this.monthlyProfit,
     required this.recentActivities,
     required this.revenueItems,
+    required this.circularFlows,
     required this.lowStockPreview,
     required this.financeVisible,
   });
@@ -70,6 +89,7 @@ class DashboardSummary {
   final double monthlyProfit;
   final List<DashboardActivity> recentActivities;
   final List<RevenueBreakdownItem> revenueItems;
+  final List<DashboardCircularFlow> circularFlows;
   final List<LowStockDashboardItem> lowStockPreview;
   final bool financeVisible;
 

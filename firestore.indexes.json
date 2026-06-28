@@ -20,6 +20,14 @@
       "collectionGroup": "logbooks",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "moduleType", "order": "ASCENDING" },
+        { "fieldPath": "activityDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "logbooks",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "isDeleted", "order": "ASCENDING" },
         { "fieldPath": "moduleType", "order": "ASCENDING" },
         { "fieldPath": "activityDate", "order": "ASCENDING" }
@@ -69,6 +77,14 @@
       ]
     },
     {
+      "collectionGroup": "inventory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "isLowStock", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "schedules",
       "queryScope": "COLLECTION",
       "fields": [
@@ -90,6 +106,14 @@
       "fields": [
         { "fieldPath": "isDeleted", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "schedules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "moduleType", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
       ]
     },
@@ -191,6 +215,22 @@
       "fields": [
         { "fieldPath": "isDeleted", "order": "ASCENDING" },
         { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finance_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finance_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "moduleType", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
     },
@@ -261,6 +301,26 @@
       "collectionGroup": "notifications",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "isRead", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "relatedCollection", "order": "ASCENDING" },
+        { "fieldPath": "relatedId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
         { "fieldPath": "relatedCollection", "order": "ASCENDING" },
         { "fieldPath": "relatedId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
@@ -339,8 +399,38 @@
       "collectionGroup": "production_results",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "harvestDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "production_results",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "logbookId", "order": "ASCENDING" },
         { "fieldPath": "harvestDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "circular_flows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "flowDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "circular_flows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sourceModuleType", "order": "ASCENDING" },
+        { "fieldPath": "flowDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "circular_flows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destinationModuleType", "order": "ASCENDING" },
+        { "fieldPath": "flowDate", "order": "DESCENDING" }
       ]
     }
   ],

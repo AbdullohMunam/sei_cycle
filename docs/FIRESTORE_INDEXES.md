@@ -33,6 +33,7 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `finance_transactions` | report rentang tanggal | `isDeleted ASC`, `date ASC` |
 | `finance_transactions` | AI recommendation finance bulan berjalan | `isDeleted ASC`, `date DESC` |
 | `farm_modules` | modul aktif urut nama | `isActive ASC`, `name ASC` |
+| `farm_modules` | dashboard modul aktif sesuai urutan brief | `isActive ASC`, `order ASC` |
 | `users` | daftar user urut nama | `name ASC` |
 | `notifications` | notifikasi personal aktif terbaru | `isDeleted ASC`, `userId ASC`, `createdAt DESC` |
 | `notifications` | notifikasi role/global aktif terbaru | `isDeleted ASC`, `targetRole ASC`, `createdAt DESC` |
@@ -42,6 +43,9 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `notifications` | mark all unread role/global | `isDeleted ASC`, `isRead ASC`, `targetRole ASC` |
 | `notifications` | low stock unread terbaru | `type ASC`, `isRead ASC`, `createdAt DESC` |
 | `notifications` | cegah duplikasi notifikasi related item | `relatedCollection ASC`, `relatedId ASC`, `createdAt DESC` |
+| `notifications` | notifikasi unread terbaru | `isDeleted ASC`, `isRead ASC`, `createdAt DESC` |
+| `notifications` | filter tipe unread terbaru | `isDeleted ASC`, `type ASC`, `isRead ASC`, `createdAt DESC` |
+| `notifications` | cegah duplikasi notifikasi related item aktif | `isDeleted ASC`, `relatedCollection ASC`, `relatedId ASC`, `createdAt DESC` |
 
 ## Disiapkan Untuk Collection Pendukung
 
@@ -54,6 +58,10 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `inventory_transactions` | histori stok per modul | `moduleType ASC`, `transactionDate DESC` |
 | `production_results` | hasil produksi per modul | `moduleType ASC`, `harvestDate DESC` |
 | `production_results` | hasil produksi per logbook | `logbookId ASC`, `harvestDate DESC` |
+| `production_results` | dashboard hasil produksi terbaru | `harvestDate DESC` |
+| `circular_flows` | dashboard aliran nutrisi terbaru | `flowDate DESC` |
+| `circular_flows` | aliran nutrisi per sumber | `sourceModuleType ASC`, `flowDate DESC` |
+| `circular_flows` | aliran nutrisi per tujuan | `destinationModuleType ASC`, `flowDate DESC` |
 
 ## Catatan
 

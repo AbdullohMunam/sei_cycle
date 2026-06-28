@@ -8,7 +8,7 @@ atau Firebase Storage.
 ## Prinsip Utama
 
 - Semua data aplikasi mensyaratkan Firebase Auth.
-- Semua collection tampilan utama bisa dibaca oleh user yang sudah login.
+- Semua collection tampilan utama bisa dibaca oleh user aktif.
 - User aktif adalah user yang punya dokumen `users/{uid}` dan `isActive` tidak
   bernilai `false`; status ini tetap dipakai untuk izin mutasi sesuai role.
 - Role valid utama: `admin`, `operator_lapangan`, `operator_keuangan`.
@@ -23,17 +23,20 @@ atau Firebase Storage.
 | Collection | Read | Create | Update | Delete |
 | --- | --- | --- | --- | --- |
 | `users` | Semua user login | Owner membuat profil sendiri, admin membuat user valid | Owner update profil ringan; admin update role/status | Admin |
-| `farm_modules` | Semua user login | Admin | Admin | Admin |
-| `logbooks` | Semua user login | Admin, operator lapangan | Admin, operator lapangan tanpa soft delete | Admin |
-| `inventory` | Semua user login | Admin, operator lapangan | Admin, operator lapangan tanpa soft delete | Admin |
-| `schedules` | Semua user login | Admin, operator lapangan | Admin, operator lapangan tanpa soft delete | Admin |
-| `finance_transactions` | Semua user login | Admin, operator keuangan | Admin, operator keuangan | Admin, operator keuangan |
-| `education_contents` | Semua user login | Admin | Admin | Admin |
-| `notifications` | Semua user login | User aktif untuk alert client miliknya; admin untuk alert `system` | Penerima boleh set `isRead/readAt`; owner boleh refresh alert client miliknya | Admin |
-| `report_metadata` | Semua user login | Admin, operator keuangan | Admin, operator keuangan tanpa soft delete | Admin |
-| `recommendations` | Semua user login | Admin | Admin | Admin |
+| `farm_modules` | User aktif | Admin | Admin | Admin |
+| `logbooks` | User aktif | Admin, operator lapangan | Admin, operator lapangan tanpa soft delete | Admin |
+| `inventory` | User aktif | Admin, operator lapangan | Admin, operator lapangan tanpa soft delete | Admin |
+| `inventory_transactions` | User aktif | Admin, operator lapangan dari Logbook | Admin/operator lapangan untuk data asal tetap | Admin |
+| `production_results` | User aktif | Admin, operator lapangan dari Logbook | Admin | Admin |
+| `circular_flows` | User aktif | Admin, operator lapangan | Admin | Admin |
+| `schedules` | User aktif | Admin, operator lapangan | Admin, operator lapangan tanpa soft delete | Admin |
+| `finance_transactions` | User aktif | Admin, operator keuangan | Admin, operator keuangan | Admin, operator keuangan |
+| `education_contents` | User aktif | Admin | Admin | Admin |
+| `notifications` | User aktif | User aktif untuk alert client miliknya; admin untuk seed/system/demo alert | Penerima boleh set `isRead/readAt`; owner boleh refresh alert client miliknya | Admin |
+| `report_metadata` | User aktif | Admin, operator keuangan | Admin, operator keuangan tanpa soft delete | Admin |
+| `recommendations` | User aktif | Admin | Admin | Admin |
 
-Catatan "semua user aktif" dipakai agar semua role tetap bisa membuka semua
+Catatan "user aktif" dipakai agar semua role tetap bisa membuka semua
 tampilan utama. Pembatasan aksi mutasi tetap dilakukan di rules sesuai role.
 
 ## Detail Penting

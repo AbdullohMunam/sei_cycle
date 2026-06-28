@@ -3,13 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../constants/app_roles.dart';
 import '../constants/firestore_collections.dart';
+import '../../features/circular_flow/services/circular_flow_service.dart';
 
 class SampleDataService {
   SampleDataService({FirebaseFirestore? firestore, FirebaseAuth? auth})
     : _firestore = firestore ?? FirebaseFirestore.instance,
       _auth = auth ?? FirebaseAuth.instance;
 
-  static const sampleVersion = 'v1';
+  static const sampleVersion = 'v2';
   static const sampleCreatedBy = 'sample_seed';
 
   final FirebaseFirestore _firestore;
@@ -86,7 +87,6 @@ class SampleDataService {
       final snapshot = await _firestore
           .collection(collection)
           .where('isSampleData', isEqualTo: true)
-          .where('sampleVersion', isEqualTo: sampleVersion)
           .limit(100)
           .get();
 
@@ -109,8 +109,12 @@ List<_SampleDocument> _sampleDocuments(DateTime now, String currentUserId) {
   final today = DateTime(now.year, now.month, now.day);
   return [
     ..._sampleUsers(),
+    ..._sampleFarmModules(),
     ..._sampleLogbooks(today),
     ..._sampleInventory(),
+    ..._sampleInventoryTransactions(today),
+    ..._sampleProductionResults(today),
+    ..._sampleCircularFlows(now),
     ..._sampleSchedules(today),
     ..._sampleNotifications(today, currentUserId),
     ..._sampleEducation(),
@@ -145,6 +149,69 @@ List<_SampleDocument> _sampleUsers() {
       'role': AppRoles.operatorKeuangan,
       'isActive': true,
     }),
+  ];
+}
+
+List<_SampleDocument> _sampleFarmModules() {
+  final items = [
+    (
+      'ayam_kampung',
+      'Modul Ayam',
+      'peternakan',
+      'Pencatatan ayam kampung dan produksi telur',
+      'egg',
+      '#F59E0B',
+      1,
+    ),
+    (
+      'maggot_bsf',
+      'Modul Maggot',
+      'budidaya',
+      'Pengolahan sampah organik dengan maggot BSF',
+      'bug_report',
+      '#84CC16',
+      2,
+    ),
+    (
+      'cacing_tanah',
+      'Modul Cacing',
+      'budidaya',
+      'Produksi kascing dan kascing cair',
+      'grass',
+      '#16A34A',
+      3,
+    ),
+    (
+      'tanaman',
+      'Modul Tanaman',
+      'pertanian',
+      'Budidaya tanaman pangan organik',
+      'eco',
+      '#22C55E',
+      4,
+    ),
+    (
+      'lele',
+      'Modul Lele',
+      'perikanan',
+      'Budidaya lele terintegrasi',
+      'water_drop',
+      '#0EA5E9',
+      5,
+    ),
+  ];
+
+  return [
+    for (final item in items)
+      _sampleDoc(FirestoreCollections.farmModules, item.$1, {
+        'name': item.$2,
+        'type': item.$3,
+        'description': item.$4,
+        'icon': item.$5,
+        'color': item.$6,
+        'isActive': true,
+        'order': item.$7,
+      }),
   ];
 }
 
@@ -308,14 +375,90 @@ List<_SampleDocument> _sampleLogbooks(DateTime today) {
         'title': item.$3,
         'moduleType': item.$2,
         'activityDate': Timestamp.fromDate(item.$4),
+        'activityType': _activityTypeForLogbookTitle(item.$3),
         'quantity': item.$5,
         'unit': item.$6,
         'status': item.$7,
         'notes': item.$8,
+        'details': _sampleLogbookDetails(item.$2, item.$3, item.$5),
         'updatedBy': SampleDataService.sampleCreatedBy,
         'isDeleted': false,
       }),
   ];
+}
+
+String _activityTypeForLogbookTitle(String title) {
+  final value = title.toLowerCase();
+  if (value.contains('panen') || value.contains('produksi')) return 'harvest';
+  if (value.contains('pakan')) return 'feeding';
+  if (value.contains('pembersihan') || value.contains('sanitasi')) {
+    return 'maintenance';
+  }
+  if (value.contains('pemupukan') || value.contains('penyiraman')) {
+    return 'cultivation';
+  }
+  return 'inspection';
+}
+
+Map<String, dynamic> _sampleLogbookDetails(
+  String moduleType,
+  String title,
+  double quantity,
+) {
+  final lowerTitle = title.toLowerCase();
+  return switch (moduleType) {
+    'ayam_kampung' => {
+      'populasi_aktif': 150,
+      'konsumsi_pakan_g_per_ekor': 55,
+      'produksi_telur_hari_ini': lowerTitle.contains('telur') ? quantity : 12,
+      'berat_rata_rata_telur': 45,
+      'mortalitas_hari_ini': 0,
+      'dedak_padi_kg': lowerTitle.contains('pakan') ? quantity : 1.5,
+      'talas_pepaya_kg': 1,
+      'maggot_segar_kg': 0.5,
+      'total_biaya_pakan': 35000,
+      'kondisi_kandang': 'Kering dan bersih',
+      'suhu_kandang': 28,
+      'gejala_penyakit': 'Tidak ada',
+    },
+    'maggot_bsf' => {
+      'volume_limbah_masuk_kg': lowerTitle.contains('limbah') ? quantity : 8,
+      'sampah_organik_kg': lowerTitle.contains('limbah') ? quantity : 8,
+      'panen_maggot_kg': lowerTitle.contains('panen') ? quantity : 0,
+      'media_bekas_maggot_kg': lowerTitle.contains('panen') ? 4 : 0,
+      'kondisi_media': 'Lembap normal',
+      'bau_media': 'Normal',
+      'umur_batch_hari': 12,
+      'estimasi_panen_kg': lowerTitle.contains('panen') ? quantity : 3,
+    },
+    'cacing_tanah' => {
+      'pakan_organik_kg': lowerTitle.contains('kompos') ? quantity : 3,
+      'media_cacing_kg': 2,
+      'panen_kascing_kg': lowerTitle.contains('panen') ? quantity : 0,
+      'kascing_cair_liter': lowerTitle.contains('panen') ? 5 : 0,
+      'kelembapan_media': 'Cukup',
+      'kondisi_cacing': 'Aktif',
+    },
+    'tanaman' => {
+      'jenis_tanaman': lowerTitle.contains('panen') ? 'Talas' : 'Sayur daun',
+      'luas_area_m2': 80,
+      'pupuk_kascing_kg': lowerTitle.contains('pemupukan') ? quantity : 2,
+      'pupuk_kascing_cair_liter': lowerTitle.contains('penyiraman') ? 3 : 1,
+      'hasil_panen_kg': lowerTitle.contains('panen') ? quantity : 0,
+      'kondisi_tanaman': 'Sehat',
+      'hama_penyakit': 'Tidak ada',
+    },
+    'lele' => {
+      'jumlah_ikan': 450,
+      'pakan_lele_kg': lowerTitle.contains('pakan') ? quantity : 2,
+      'panen_lele_kg': lowerTitle.contains('panen') ? quantity : 0,
+      'ph_air': 7.2,
+      'suhu_air': 27,
+      'kondisi_air': 'Normal',
+      'mortalitas_hari_ini': 0,
+    },
+    _ => const <String, dynamic>{},
+  };
 }
 
 List<_SampleDocument> _sampleInventory() {
@@ -484,6 +627,224 @@ List<_SampleDocument> _sampleInventory() {
   ];
 }
 
+List<_SampleDocument> _sampleInventoryTransactions(DateTime today) {
+  final items = [
+    (
+      'sample_inventory_txn_ayam_dedak',
+      'sample_inventory_dedak_padi',
+      'Dedak Padi',
+      'dedak_padi',
+      'ayam_kampung',
+      'sample_logbook_ayam_001',
+      'out',
+      2.0,
+      'kg',
+      102.0,
+      100.0,
+      today.add(const Duration(hours: 7)),
+    ),
+    (
+      'sample_inventory_txn_ayam_telur',
+      'sample_inventory_telur_ayam',
+      'Telur Ayam',
+      'telur_ayam',
+      'ayam_kampung',
+      'sample_logbook_ayam_003',
+      'in',
+      18.0,
+      'butir',
+      0.0,
+      18.0,
+      today.subtract(const Duration(days: 3)).add(const Duration(hours: 8)),
+    ),
+    (
+      'sample_inventory_txn_maggot_sampah',
+      'sample_inventory_sampah_organik',
+      'Sampah Organik',
+      'sampah_organik',
+      'maggot_bsf',
+      'sample_logbook_maggot_002',
+      'out',
+      12.0,
+      'kg',
+      112.0,
+      100.0,
+      today.subtract(const Duration(days: 4)).add(const Duration(hours: 9)),
+    ),
+    (
+      'sample_inventory_txn_maggot_panen',
+      'sample_inventory_maggot_segar',
+      'Maggot Segar',
+      'maggot_segar',
+      'maggot_bsf',
+      'sample_logbook_maggot_003',
+      'in',
+      4.5,
+      'kg',
+      25.5,
+      30.0,
+      today.subtract(const Duration(days: 7)).add(const Duration(hours: 10)),
+    ),
+    (
+      'sample_inventory_txn_kascing',
+      'sample_inventory_kascing',
+      'Kascing',
+      'kascing',
+      'cacing_tanah',
+      'sample_logbook_cacing_003',
+      'in',
+      15.0,
+      'kg',
+      5.0,
+      20.0,
+      today.subtract(const Duration(days: 10)).add(const Duration(hours: 8)),
+    ),
+    (
+      'sample_inventory_txn_lele_pakan',
+      'sample_inventory_pakan_lele',
+      'Pakan Lele',
+      'pakan_lele',
+      'lele',
+      'sample_logbook_lele_001',
+      'out',
+      3.0,
+      'kg',
+      103.0,
+      100.0,
+      today.add(const Duration(hours: 7)),
+    ),
+    (
+      'sample_inventory_txn_tanaman_pupuk',
+      'sample_inventory_kascing',
+      'Kascing',
+      'kascing',
+      'tanaman',
+      'sample_logbook_tanaman_002',
+      'out',
+      6.0,
+      'kg',
+      26.0,
+      20.0,
+      today.subtract(const Duration(days: 3)).add(const Duration(hours: 8)),
+    ),
+  ];
+
+  return [
+    for (final item in items)
+      _sampleDoc(FirestoreCollections.inventoryTransactions, item.$1, {
+        'itemId': item.$2,
+        'itemName': item.$3,
+        'itemKey': item.$4,
+        'moduleType': item.$5,
+        'logbookId': item.$6,
+        'type': item.$7,
+        'quantity': item.$8,
+        'unit': item.$9,
+        'beforeStock': item.$10,
+        'afterStock': item.$11,
+        'notes': 'Transaksi stok sample dari logbook.',
+        'transactionDate': Timestamp.fromDate(item.$12),
+        'isReversed': false,
+        'reversedAt': null,
+        'reversedBy': '',
+      }),
+  ];
+}
+
+List<_SampleDocument> _sampleProductionResults(DateTime today) {
+  final items = [
+    (
+      'sample_production_telur_ayam',
+      'sample_logbook_ayam_003',
+      'ayam_kampung',
+      'Telur Ayam',
+      85.0,
+      'butir',
+      today.subtract(const Duration(days: 1)),
+      'Telur bersih dan layak jual.',
+    ),
+    (
+      'sample_production_maggot_segar',
+      'sample_logbook_maggot_003',
+      'maggot_bsf',
+      'Maggot Segar',
+      18.0,
+      'kg',
+      today.subtract(const Duration(days: 2)),
+      'Maggot aktif, sebagian dialokasikan untuk pakan.',
+    ),
+    (
+      'sample_production_kascing',
+      'sample_logbook_cacing_003',
+      'cacing_tanah',
+      'Kascing',
+      20.0,
+      'kg',
+      today.subtract(const Duration(days: 3)),
+      'Kascing halus setelah ayak.',
+    ),
+    (
+      'sample_production_kascing_cair',
+      'sample_logbook_cacing_003',
+      'cacing_tanah',
+      'Kascing Cair',
+      10.0,
+      'liter',
+      today.subtract(const Duration(days: 3)),
+      'Kascing cair siap pakai untuk tanaman.',
+    ),
+    (
+      'sample_production_lele_panen',
+      'sample_logbook_lele_003',
+      'lele',
+      'Lele Panen',
+      30.0,
+      'kg',
+      today.subtract(const Duration(days: 4)),
+      'Ukuran konsumsi dan siap distribusi.',
+    ),
+    (
+      'sample_production_talas_panen',
+      'sample_logbook_tanaman_003',
+      'tanaman',
+      'Talas Panen',
+      50.0,
+      'kg',
+      today.subtract(const Duration(days: 5)),
+      'Talas disortir dari area tanaman pangan.',
+    ),
+  ];
+
+  return [
+    for (final item in items)
+      _sampleDoc(FirestoreCollections.productionResults, item.$1, {
+        'logbookId': item.$2,
+        'moduleType': item.$3,
+        'productName': item.$4,
+        'quantity': item.$5,
+        'unit': item.$6,
+        'qualityStatus': 'normal',
+        'harvestDate': Timestamp.fromDate(item.$7),
+        'notes': item.$8,
+      }),
+  ];
+}
+
+List<_SampleDocument> _sampleCircularFlows(DateTime now) {
+  return [
+    for (final flow in defaultCircularFlows(now))
+      _sampleDoc(FirestoreCollections.circularFlows, flow.id, {
+        'sourceModuleType': flow.sourceModuleType,
+        'destinationModuleType': flow.destinationModuleType,
+        'materialName': flow.materialName,
+        'quantity': flow.quantity,
+        'unit': flow.unit,
+        'flowDate': Timestamp.fromDate(flow.flowDate),
+        'notes': flow.notes,
+      }),
+  ];
+}
+
 List<_SampleDocument> _sampleSchedules(DateTime today) {
   final items = [
     (
@@ -550,10 +911,10 @@ List<_SampleDocument> _sampleSchedules(DateTime today) {
       'Cek warna air, aerasi, dan respon ikan.',
     ),
     (
-      'sample_schedule_media_maggot',
-      'Pengecekan media maggot',
+      'sample_schedule_input_sampah_maggot',
+      'Input sampah organik maggot',
       'maggot_bsf',
-      'inspection',
+      'feeding',
       today.subtract(const Duration(days: 1)).add(const Duration(hours: 8)),
       'pending',
       'Jadwal contoh overdue untuk menguji reminder.',
@@ -597,13 +958,13 @@ List<_SampleDocument> _sampleNotifications(DateTime today, String userId) {
   final items = [
     (
       'sample_notification_low_stock',
-      'Stok pakan lele rendah',
-      'Pakan Lele berada di bawah batas minimum dan perlu restock.',
+      'Stok Dedak Padi rendah',
+      'Dedak Padi perlu dipantau dan disiapkan restock.',
       'low_stock',
       AppRoles.admin,
       userId,
       FirestoreCollections.inventory,
-      'sample_inventory_pakan_lele',
+      'sample_inventory_dedak_padi',
     ),
     (
       'sample_notification_today_schedule',
@@ -618,12 +979,12 @@ List<_SampleDocument> _sampleNotifications(DateTime today, String userId) {
     (
       'sample_notification_overdue_schedule',
       'Jadwal overdue',
-      'Pengecekan media maggot sudah melewati waktu rencana.',
+      'Input sampah organik maggot sudah melewati waktu rencana.',
       'schedule_overdue',
       AppRoles.admin,
       userId,
       FirestoreCollections.schedules,
-      'sample_schedule_media_maggot',
+      'sample_schedule_input_sampah_maggot',
     ),
     (
       'sample_notification_production_reminder',
@@ -855,14 +1216,24 @@ List<_SampleDocument> _sampleFinance(DateTime today) {
       'lele',
     ),
     (
-      'sample_finance_income_kompos_001',
+      'sample_finance_income_kascing_001',
       'income',
-      'Kompos',
+      'Kascing',
       180000.0,
       today.subtract(const Duration(days: 9)),
-      'Penjualan kompos matang untuk kebun sekitar.',
+      'Penjualan kascing untuk kebun sekitar.',
       'tunai',
       'cacing_tanah',
+    ),
+    (
+      'sample_finance_income_maggot_001',
+      'income',
+      'Maggot',
+      160000.0,
+      today.subtract(const Duration(days: 11)),
+      'Pemasukan dari penjualan maggot segar.',
+      'tunai',
+      'maggot_bsf',
     ),
     (
       'sample_finance_income_telur_001',
@@ -1027,7 +1398,7 @@ List<_SampleDocument> _sampleRecommendations(DateTime today) {
       'high',
       'maggot_bsf',
       FirestoreCollections.schedules,
-      'sample_schedule_media_maggot',
+      'sample_schedule_input_sampah_maggot',
       today.add(const Duration(days: 2)),
     ),
   ];
@@ -1070,8 +1441,12 @@ _SampleDocument _sampleDoc(
 
 const _sampleCollections = [
   FirestoreCollections.users,
+  FirestoreCollections.farmModules,
   FirestoreCollections.logbooks,
   FirestoreCollections.inventory,
+  FirestoreCollections.inventoryTransactions,
+  FirestoreCollections.productionResults,
+  FirestoreCollections.circularFlows,
   FirestoreCollections.schedules,
   FirestoreCollections.notifications,
   FirestoreCollections.educationContents,
@@ -1081,10 +1456,23 @@ const _sampleCollections = [
 
 const _representativeDocuments = [
   _SampleDocumentRef(FirestoreCollections.users, 'sample_user_admin'),
+  _SampleDocumentRef(FirestoreCollections.farmModules, 'ayam_kampung'),
   _SampleDocumentRef(FirestoreCollections.logbooks, 'sample_logbook_ayam_001'),
   _SampleDocumentRef(
     FirestoreCollections.inventory,
     'sample_inventory_pakan_lele',
+  ),
+  _SampleDocumentRef(
+    FirestoreCollections.inventoryTransactions,
+    'sample_inventory_txn_ayam_dedak',
+  ),
+  _SampleDocumentRef(
+    FirestoreCollections.productionResults,
+    'sample_production_telur_ayam',
+  ),
+  _SampleDocumentRef(
+    FirestoreCollections.circularFlows,
+    'tanaman_to_maggot_bsf',
   ),
   _SampleDocumentRef(
     FirestoreCollections.schedules,
