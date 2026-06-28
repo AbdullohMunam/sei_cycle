@@ -296,49 +296,67 @@ class _MobileNavigation extends StatelessWidget {
   Future<void> _showMore(BuildContext context, int startIndex) async {
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-              child: Text(
-                'Menu lainnya',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+      builder: (context) {
+        final mediaQuery = MediaQuery.of(context);
+        final maxSheetHeight = mediaQuery.size.height * 0.72;
+
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxSheetHeight),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              mediaQuery.padding.bottom + 20,
             ),
-            for (var index = startIndex; index < destinations.length; index++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: ListTile(
-                  selected: index == selectedIndex,
-                  selectedColor: AppColors.primaryGreen,
-                  selectedTileColor: AppColors.softGreen,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                  child: Text(
+                    'Menu lainnya',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  leading: Icon(
-                    index == selectedIndex
-                        ? destinations[index].selectedIcon
-                        : destinations[index].icon,
-                  ),
-                  title: Text(destinations[index].label),
-                  trailing: index == selectedIndex
-                      ? const Icon(Icons.check_rounded, size: 20)
-                      : null,
-                  onTap: () {
-                    Navigator.pop(context);
-                    onSelected(index);
-                  },
                 ),
-              ),
-          ],
-        ),
-      ),
+                for (
+                  var index = startIndex;
+                  index < destinations.length;
+                  index++
+                )
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: ListTile(
+                      selected: index == selectedIndex,
+                      selectedColor: AppColors.primaryGreen,
+                      selectedTileColor: AppColors.softGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      leading: Icon(
+                        index == selectedIndex
+                            ? destinations[index].selectedIcon
+                            : destinations[index].icon,
+                      ),
+                      title: Text(destinations[index].label),
+                      trailing: index == selectedIndex
+                          ? const Icon(Icons.check_rounded, size: 20)
+                          : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onSelected(index);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
