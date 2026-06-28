@@ -10,6 +10,7 @@ import '../features/notification/screen/notification_screen.dart';
 import '../features/notification/services/notification_service.dart';
 import '../features/profile/models/app_user.dart';
 import '../features/profile/screen/profile_screen.dart';
+import '../features/recommendations/screen/recommendation_screen.dart';
 import '../features/reports/screens/report_screen.dart';
 import '../features/schedule/screen/schedule_screen.dart';
 import '../theme/app_theme.dart';
@@ -76,6 +77,13 @@ class _AppShellState extends State<AppShell> {
         icon: Icons.account_balance_wallet_outlined,
         selectedIcon: Icons.account_balance_wallet_rounded,
         builder: () => FinanceScreen(profile: widget.profile),
+      ),
+    if (widget.profile.canViewRecommendations)
+      _Destination(
+        label: 'Rekomendasi',
+        icon: Icons.auto_awesome_outlined,
+        selectedIcon: Icons.auto_awesome_rounded,
+        builder: () => RecommendationScreen(profile: widget.profile),
       ),
     if (widget.profile.canViewReports)
       _Destination(

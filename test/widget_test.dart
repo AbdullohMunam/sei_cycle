@@ -8,7 +8,11 @@ import 'package:sei_cycle/core/widgets/feature_page.dart';
 import 'package:sei_cycle/features/auth/screen/widgets/auth_frame.dart';
 import 'package:sei_cycle/features/finance/models/finance_record.dart';
 import 'package:sei_cycle/features/finance/services/finance_service.dart';
+import 'package:sei_cycle/features/inventory/models/inventory_item.dart';
+import 'package:sei_cycle/features/logbook/models/logbook_entry.dart';
 import 'package:sei_cycle/features/profile/models/app_user.dart';
+import 'package:sei_cycle/features/recommendations/services/recommendation_service.dart';
+import 'package:sei_cycle/features/schedule/models/schedule_item.dart';
 import 'package:sei_cycle/theme/app_theme.dart';
 
 void main() {
@@ -71,6 +75,7 @@ void main() {
       expect(user.canViewInventory, isTrue);
       expect(user.canViewSchedules, isTrue);
       expect(user.canViewFinance, isTrue);
+      expect(user.canViewRecommendations, isTrue);
     }
 
     expect(operatorLapangan.canManageLogbooks, isTrue);
@@ -104,6 +109,7 @@ void main() {
       expect(user.canViewInventory, isTrue);
       expect(user.canViewSchedules, isTrue);
       expect(user.canViewFinance, isTrue);
+      expect(user.canViewRecommendations, isTrue);
       expect(user.canManageLogbooks, isFalse);
       expect(user.canManageInventory, isFalse);
       expect(user.canManageSchedules, isFalse);
@@ -160,6 +166,87 @@ void main() {
     expect(summary.byCategory['Panen telur']?.income, 150000);
     expect(summary.byCategory['Pakan']?.expense, 50000);
   });
+
+  test('rule based recommendations detect core operational risks', () {
+    final now = DateTime(2026, 6, 28);
+    final recommendations = RecommendationService.generateFromData(
+      logbooks: [
+        _logbook(
+          id: 'lele-start',
+          moduleId: FarmModules.lele.id,
+          activityType: 'Tebar benih',
+          date: DateTime(2026, 3, 31),
+          quantity: 100,
+          unit: 'ekor',
+        ),
+        _logbook(
+          id: 'lele-feed',
+          moduleId: FarmModules.lele.id,
+          activityType: 'Pakan harian',
+          date: DateTime(2026, 6, 27),
+          quantity: 3,
+          unit: 'kg',
+        ),
+        _logbook(
+          id: 'lele-panen',
+          moduleId: FarmModules.lele.id,
+          activityType: 'Cek pertumbuhan',
+          date: DateTime(2026, 6, 26),
+          quantity: 8,
+          unit: 'cm',
+        ),
+      ],
+      lowStockItems: [
+        _inventoryItem(
+          id: 'feed',
+          name: 'Pakan lele',
+          currentStock: 2,
+          minStock: 5,
+          unit: 'kg',
+        ),
+      ],
+      overdueSchedules: [
+        _scheduleItem(
+          id: 'water-check',
+          title: 'Cek kualitas air',
+          moduleId: FarmModules.lele.id,
+          date: DateTime(2026, 6, 26),
+        ),
+      ],
+      financeRecords: [
+        _financeRecord(
+          id: 'income',
+          type: 'income',
+          category: 'Penjualan',
+          amount: 100000,
+          date: now,
+        ),
+        _financeRecord(
+          id: 'expense',
+          type: 'expense',
+          category: 'Pakan',
+          amount: 150000,
+          date: now,
+        ),
+      ],
+      includeFinance: true,
+      now: now,
+    );
+
+    expect(
+      recommendations.map((recommendation) => recommendation.type),
+      containsAll(['inventory', 'schedule', 'finance', 'harvest_prediction']),
+    );
+    expect(
+      recommendations.any(
+        (recommendation) =>
+            recommendation.title.contains('Persiapan panen') &&
+            recommendation.priority == 'high',
+      ),
+      isTrue,
+    );
+  });
+
   testWidgets('auth layout fits a compact Android viewport', (tester) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;
@@ -257,6 +344,77 @@ FinanceRecord _financeRecord({
     createdAt: date,
     updatedAt: date,
     isDeleted: isDeleted,
+  );
+}
+
+LogbookEntry _logbook({
+  required String id,
+  required String moduleId,
+  required String activityType,
+  required DateTime date,
+  required double quantity,
+  required String unit,
+}) {
+  return LogbookEntry(
+    id: id,
+    moduleId: moduleId,
+    activityType: activityType,
+    activityDate: date,
+    quantity: quantity,
+    unit: unit,
+    condition: 'normal',
+    note: '',
+    createdBy: 'tester',
+    updatedBy: 'tester',
+    createdAt: date,
+    updatedAt: date,
+    isDeleted: false,
+  );
+}
+
+InventoryItem _inventoryItem({
+  required String id,
+  required String name,
+  required double currentStock,
+  required double minStock,
+  required String unit,
+}) {
+  final now = DateTime(2026);
+  return InventoryItem(
+    id: id,
+    name: name,
+    category: 'Pakan',
+    unit: unit,
+    currentStock: currentStock,
+    minStock: minStock,
+    isLowStock: true,
+    createdBy: 'tester',
+    updatedBy: 'tester',
+    createdAt: now,
+    updatedAt: now,
+    isDeleted: false,
+  );
+}
+
+ScheduleItem _scheduleItem({
+  required String id,
+  required String title,
+  required String moduleId,
+  required DateTime date,
+}) {
+  return ScheduleItem(
+    id: id,
+    title: title,
+    moduleId: moduleId,
+    scheduleType: 'maintenance',
+    scheduledAt: date,
+    status: 'pending',
+    note: '',
+    createdBy: 'tester',
+    updatedBy: 'tester',
+    createdAt: date,
+    updatedAt: date,
+    isDeleted: false,
   );
 }
 

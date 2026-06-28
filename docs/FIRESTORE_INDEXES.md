@@ -10,14 +10,17 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | `logbooks` | filter moduleType + logbook aktif terbaru | `isDeleted ASC`, `moduleType ASC`, `activityDate DESC` |
 | `logbooks` | filter tanggal + logbook aktif terbaru | `isDeleted ASC`, `activityDate DESC` |
 | `logbooks` | filter moduleType + tanggal + logbook aktif terbaru | `isDeleted ASC`, `moduleType ASC`, `activityDate DESC` |
+| `logbooks` | AI recommendation logbook 45 hari terakhir | `isDeleted ASC`, `activityDate DESC` |
 | `inventory` | item aktif, stok menipis di atas, urut nama | `isDeleted ASC`, `isLowStock DESC`, `name ASC` |
 | `inventory` | dashboard stok rendah maksimal 5 item | `isDeleted ASC`, `isLowStock ASC`, `name ASC` |
 | `schedules` | jadwal aktif urut tanggal | `isDeleted ASC`, `date ASC` |
 | `schedules` | dashboard jadwal pending | `isDeleted ASC`, `status ASC` |
 | `schedules` | dashboard jadwal overdue | `isDeleted ASC`, `status ASC`, `date ASC` |
+| `schedules` | AI recommendation jadwal overdue | `isDeleted ASC`, `status ASC`, `date ASC` |
 | `education_contents` | konten aktif terbaru untuk admin | `isDeleted ASC`, `updatedAt DESC` |
 | `education_contents` | konten published aktif terbaru untuk user | `isDeleted ASC`, `isPublished ASC`, `updatedAt DESC` |
 | `finance_transactions` | transaksi aktif terbaru | `isDeleted ASC`, `date DESC` |
+| `finance_transactions` | AI recommendation finance bulan berjalan | `isDeleted ASC`, `date DESC` |
 | `farm_modules` | modul aktif urut nama | `isActive ASC`, `name ASC` |
 | `users` | daftar user urut nama | `name ASC` |
 | `notifications` | notifikasi personal aktif terbaru | `isDeleted ASC`, `userId ASC`, `createdAt DESC` |
@@ -32,7 +35,7 @@ Daftar ini mengikuti query Flutter saat ini. Buat index lewat Firebase Console b
 | Collection | Query yang mungkin dibutuhkan | Field index yang disarankan |
 | --- | --- | --- |
 | `report_metadata` | laporan per tipe/periode | `type ASC`, `isDeleted ASC`, `periodStart DESC` |
-| `recommendations` | rekomendasi per moduleType dan status | `moduleType ASC`, `status ASC`, `isDeleted ASC`, `priority ASC`, `createdAt DESC` |
+| `recommendations` | snapshot rekomendasi opsional per modul | `moduleType ASC`, `isResolved ASC`, `priority ASC`, `createdAt DESC` |
 
 ## Catatan
 

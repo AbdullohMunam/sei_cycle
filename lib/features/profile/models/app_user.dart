@@ -54,6 +54,7 @@ class AppUser {
   bool get canManageFinance => isAdmin || isOperatorKeuangan;
   bool get canDeleteFinance => isAdmin || isOperatorKeuangan;
   bool get canViewFinanceDashboard => canViewFinance;
+  bool get canViewRecommendations => isActive;
 
   bool get canManageOperations =>
       canManageLogbooks || canManageInventory || canManageSchedules;

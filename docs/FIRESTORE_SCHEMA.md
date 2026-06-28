@@ -16,7 +16,7 @@ Nama field canonical memakai camelCase. Model Dart masih membaca beberapa field 
 | `education_contents` | aktif | Artikel, video link, dan SOP tanpa Storage. |
 | `finance_transactions` | aktif | Pemasukan/pengeluaran operasional. |
 | `report_metadata` | didukung | Metadata laporan/export di sisi client. |
-| `recommendations` | didukung | Rekomendasi/manual insight yang dibuat admin. |
+| `recommendations` | didukung | Snapshot opsional untuk rekomendasi rule-based. Default rekomendasi dibuat on-demand di client. |
 
 ## Field Umum Dokumen Operasional
 
@@ -249,19 +249,21 @@ Gunakan collection ini hanya untuk metadata laporan yang dihasilkan/dikelola cli
 
 ```json
 {
-  "id": "uuid",
-  "title": "Kurangi pakan sore",
-  "description": "FCR lele meningkat dalam 7 hari terakhir.",
+  "id": "rec_harvest_prepare_lele_20260628",
+  "title": "Persiapan panen Lele",
+  "description": "Estimasi panen sekitar 3 hari lagi.",
+  "type": "harvest_prediction",
+  "priority": "high",
   "moduleType": "lele",
-  "priority": "medium",
-  "status": "open",
-  "source": "manual",
-  "createdBy": "uid",
-  "updatedBy": "uid",
+  "sourceCollection": "logbooks",
+  "sourceId": "logbook-id",
   "createdAt": "timestamp",
-  "updatedAt": "timestamp",
-  "isDeleted": false
+  "validUntil": "timestamp",
+  "isResolved": false
 }
 ```
 
-Rekomendasi MVP dibuat manual/admin-side. Tidak ada job backend untuk membuat rekomendasi otomatis.
+Rekomendasi tahap awal dibuat on-demand di Flutter oleh `RecommendationService`.
+Collection ini hanya untuk snapshot opsional agar tidak boros write Firestore.
+Tidak ada machine learning cloud, API AI berbayar, Cloud Functions, atau backend
+server untuk membuat rekomendasi otomatis.

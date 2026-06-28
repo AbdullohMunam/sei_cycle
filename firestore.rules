@@ -377,7 +377,8 @@ service cloud.firestore {
 
     /*
       RECOMMENDATIONS
-      Rekomendasi MVP dibuat manual/admin-side.
+      Hasil rule-based recommendation default dibuat on-demand di client.
+      Collection ini disiapkan untuk snapshot rekomendasi manual/admin-side.
     */
     match /recommendations/{recommendationId} {
       allow read: if activeUser();
