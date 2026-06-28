@@ -22,54 +22,19 @@ class DashboardService {
     final monthStart = DateTime(today.year, today.month);
     final nextMonth = DateTime(today.year, today.month + 1);
 
-    final logbookFuture = _firestore
-        .collection(FirestoreCollections.logbooks)
-        .where('isDeleted', isEqualTo: false)
-        .where(
-          'activityDate',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(logbookStart),
-        )
-        .where('activityDate', isLessThan: Timestamp.fromDate(tomorrow))
-        .orderBy('activityDate')
-        .get();
-
-    final inventoryCountFuture = _activeInventoryQuery().count().get();
-    final lowStockCountFuture = _activeInventoryQuery()
-        .where('isLowStock', isEqualTo: true)
-        .count()
-        .get();
-    final lowStockPreviewFuture = _activeInventoryQuery()
-        .where('isLowStock', isEqualTo: true)
-        .orderBy('name')
-        .limit(5)
-        .get();
-
-    final todayScheduleCountFuture = _activeSchedulesQuery()
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
-        .where('date', isLessThan: Timestamp.fromDate(tomorrow))
-        .count()
-        .get();
-    final pendingScheduleCountFuture = _activeSchedulesQuery()
-        .where('status', isEqualTo: 'pending')
-        .count()
-        .get();
-    final overdueScheduleCountFuture = _activeSchedulesQuery()
-        .where('status', isEqualTo: 'pending')
-        .where('date', isLessThan: Timestamp.fromDate(today))
-        .count()
-        .get();
+    final logbookFuture = _loadLogbookDocs(start: logbookStart, end: tomorrow);
+    final inventoryCountFuture = _loadInventoryCount();
+    final lowStockCountFuture = _loadLowStockCount();
+    final lowStockPreviewFuture = _loadLowStockPreviewDocs();
+    final todayScheduleCountFuture = _loadTodayScheduleCount(
+      today: today,
+      tomorrow: tomorrow,
+    );
+    final pendingScheduleCountFuture = _loadPendingScheduleCount();
+    final overdueScheduleCountFuture = _loadOverdueScheduleCount(today: today);
 
     final financeFuture = includeFinance
-        ? _firestore
-              .collection(FirestoreCollections.financeTransactions)
-              .where('isDeleted', isEqualTo: false)
-              .where(
-                'date',
-                isGreaterThanOrEqualTo: Timestamp.fromDate(monthStart),
-              )
-              .where('date', isLessThan: Timestamp.fromDate(nextMonth))
-              .orderBy('date', descending: true)
-              .get()
+        ? _loadFinanceSnapshot(monthStart: monthStart, nextMonth: nextMonth)
         : Future.value(null);
 
     final results = await Future.wait<Object?>([
@@ -83,18 +48,17 @@ class DashboardService {
       financeFuture,
     ]);
 
-    final logbookSnapshot = results[0] as QuerySnapshot<Map<String, dynamic>>;
-    final inventoryCount = (results[1] as AggregateQuerySnapshot).count ?? 0;
-    final lowStockCount = (results[2] as AggregateQuerySnapshot).count ?? 0;
-    final lowStockPreviewSnapshot =
-        results[3] as QuerySnapshot<Map<String, dynamic>>;
-    final todayScheduleCount =
-        (results[4] as AggregateQuerySnapshot).count ?? 0;
-    final pendingScheduleCount =
-        (results[5] as AggregateQuerySnapshot).count ?? 0;
-    final overdueScheduleCount =
-        (results[6] as AggregateQuerySnapshot).count ?? 0;
-    final financeSnapshot = results[7] as QuerySnapshot<Map<String, dynamic>>?;
+    final logbookDocs =
+        results[0] as List<QueryDocumentSnapshot<Map<String, dynamic>>>;
+    final inventoryCount = results[1] as int;
+    final lowStockCount = results[2] as int;
+    final lowStockPreviewDocs =
+        results[3] as List<QueryDocumentSnapshot<Map<String, dynamic>>>;
+    final todayScheduleCount = results[4] as int;
+    final pendingScheduleCount = results[5] as int;
+    final overdueScheduleCount = results[6] as int;
+    final financeDocs =
+        results[7] as List<QueryDocumentSnapshot<Map<String, dynamic>>>?;
 
     final activityCounts = <DateTime, int>{
       for (var i = 0; i < 7; i++) chartStart.add(Duration(days: i)): 0,
@@ -105,7 +69,7 @@ class DashboardService {
     var todayLogbooks = 0;
     var weeklyLogbooks = 0;
 
-    for (final document in logbookSnapshot.docs) {
+    for (final document in logbookDocs) {
       final data = document.data();
       final timestamp = data['activityDate'];
       if (timestamp is! Timestamp) continue;
@@ -126,8 +90,8 @@ class DashboardService {
 
     var totalIncome = 0.0;
     var totalExpense = 0.0;
-    if (financeSnapshot != null) {
-      for (final document in financeSnapshot.docs) {
+    if (financeDocs != null) {
+      for (final document in financeDocs) {
         final data = document.data();
         final amount = (data['amount'] as num?)?.toDouble() ?? 0;
         if (data['type'] == 'income') {
@@ -152,7 +116,7 @@ class DashboardService {
       totalInventoryItems: inventoryCount,
       lowStockItems: lowStockCount,
       lowStockPreview: [
-        for (final document in lowStockPreviewSnapshot.docs)
+        for (final document in lowStockPreviewDocs)
           _lowStockItemFromDocument(document),
       ],
       todaySchedules: todayScheduleCount,
@@ -167,8 +131,179 @@ class DashboardService {
           .toList(),
       nutrientCycleNodes: _nutrientCycleNodes,
       nutrientCycleEdges: _nutrientCycleEdges,
-      financeVisible: includeFinance,
+      financeVisible: includeFinance && financeDocs != null,
     );
+  }
+
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _loadLogbookDocs({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.logbooks)
+          .where('isDeleted', isEqualTo: false)
+          .where(
+            'activityDate',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+          )
+          .where('activityDate', isLessThan: Timestamp.fromDate(end))
+          .orderBy('activityDate')
+          .get();
+      return snapshot.docs;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      final docs = await _loadActiveDocs(FirestoreCollections.logbooks);
+      return docs.where((document) {
+        final value = document.data()['activityDate'];
+        if (value is! Timestamp) return false;
+        final date = value.toDate();
+        return !date.isBefore(start) && date.isBefore(end);
+      }).toList()..sort(_compareTimestamp('activityDate'));
+    }
+  }
+
+  Future<int> _loadInventoryCount() async {
+    try {
+      return (await _activeInventoryQuery().count().get()).count ?? 0;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      return (await _loadActiveDocs(FirestoreCollections.inventory)).length;
+    }
+  }
+
+  Future<int> _loadLowStockCount() async {
+    try {
+      return (await _activeInventoryQuery()
+                  .where('isLowStock', isEqualTo: true)
+                  .count()
+                  .get())
+              .count ??
+          0;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      final docs = await _loadActiveDocs(FirestoreCollections.inventory);
+      return docs
+          .where((document) => document.data()['isLowStock'] == true)
+          .length;
+    }
+  }
+
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  _loadLowStockPreviewDocs() async {
+    try {
+      final snapshot = await _activeInventoryQuery()
+          .where('isLowStock', isEqualTo: true)
+          .orderBy('name')
+          .limit(5)
+          .get();
+      return snapshot.docs;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      final docs = await _loadActiveDocs(FirestoreCollections.inventory);
+      final lowStockDocs =
+          docs
+              .where((document) => document.data()['isLowStock'] == true)
+              .toList()
+            ..sort(_compareString('name'));
+      return lowStockDocs.take(5).toList();
+    }
+  }
+
+  Future<int> _loadTodayScheduleCount({
+    required DateTime today,
+    required DateTime tomorrow,
+  }) async {
+    try {
+      return (await _activeSchedulesQuery()
+                  .where(
+                    'date',
+                    isGreaterThanOrEqualTo: Timestamp.fromDate(today),
+                  )
+                  .where('date', isLessThan: Timestamp.fromDate(tomorrow))
+                  .count()
+                  .get())
+              .count ??
+          0;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      final docs = await _loadActiveDocs(FirestoreCollections.schedules);
+      return docs.where((document) {
+        final value = document.data()['date'];
+        if (value is! Timestamp) return false;
+        final date = value.toDate();
+        return !date.isBefore(today) && date.isBefore(tomorrow);
+      }).length;
+    }
+  }
+
+  Future<int> _loadPendingScheduleCount() async {
+    try {
+      return (await _activeSchedulesQuery()
+                  .where('status', isEqualTo: 'pending')
+                  .count()
+                  .get())
+              .count ??
+          0;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      final docs = await _loadActiveDocs(FirestoreCollections.schedules);
+      return docs
+          .where((document) => document.data()['status'] == 'pending')
+          .length;
+    }
+  }
+
+  Future<int> _loadOverdueScheduleCount({required DateTime today}) async {
+    try {
+      return (await _activeSchedulesQuery()
+                  .where('status', isEqualTo: 'pending')
+                  .where('date', isLessThan: Timestamp.fromDate(today))
+                  .count()
+                  .get())
+              .count ??
+          0;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      final docs = await _loadActiveDocs(FirestoreCollections.schedules);
+      return docs.where((document) {
+        final data = document.data();
+        final value = data['date'];
+        if (data['status'] != 'pending' || value is! Timestamp) return false;
+        return value.toDate().isBefore(today);
+      }).length;
+    }
+  }
+
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>?>
+  _loadFinanceSnapshot({
+    required DateTime monthStart,
+    required DateTime nextMonth,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.financeTransactions)
+          .where('isDeleted', isEqualTo: false)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(monthStart))
+          .where('date', isLessThan: Timestamp.fromDate(nextMonth))
+          .orderBy('date', descending: true)
+          .get();
+      return snapshot.docs;
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied') return null;
+      if (_isIndexBuilding(error)) {
+        final docs = await _loadActiveDocs(
+          FirestoreCollections.financeTransactions,
+        );
+        return docs.where((document) {
+          final value = document.data()['date'];
+          if (value is! Timestamp) return false;
+          final date = value.toDate();
+          return !date.isBefore(monthStart) && date.isBefore(nextMonth);
+        }).toList()..sort(_compareTimestamp('date', descending: true));
+      }
+      rethrow;
+    }
   }
 
   Query<Map<String, dynamic>> _activeInventoryQuery() {
@@ -183,6 +318,24 @@ class DashboardService {
         .where('isDeleted', isEqualTo: false);
   }
 
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _loadActiveDocs(
+    String collection,
+  ) async {
+    try {
+      final snapshot = await _firestore
+          .collection(collection)
+          .where('isDeleted', isEqualTo: false)
+          .get();
+      return snapshot.docs;
+    } on FirebaseException catch (error) {
+      if (!_isIndexBuilding(error)) rethrow;
+      final snapshot = await _firestore.collection(collection).get();
+      return snapshot.docs
+          .where((document) => document.data()['isDeleted'] != true)
+          .toList();
+    }
+  }
+
   LowStockDashboardItem _lowStockItemFromDocument(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
   ) {
@@ -195,6 +348,44 @@ class DashboardService {
       unit: data['unit'] as String? ?? '',
     );
   }
+}
+
+bool _isIndexBuilding(FirebaseException error) {
+  return error.code == 'failed-precondition' &&
+      (error.message?.toLowerCase().contains('index') ?? false);
+}
+
+int Function(
+  QueryDocumentSnapshot<Map<String, dynamic>>,
+  QueryDocumentSnapshot<Map<String, dynamic>>,
+)
+_compareString(String field) {
+  return (left, right) {
+    final leftValue = left.data()[field];
+    final rightValue = right.data()[field];
+    return (leftValue is String ? leftValue : '').compareTo(
+      rightValue is String ? rightValue : '',
+    );
+  };
+}
+
+int Function(
+  QueryDocumentSnapshot<Map<String, dynamic>>,
+  QueryDocumentSnapshot<Map<String, dynamic>>,
+)
+_compareTimestamp(String field, {bool descending = false}) {
+  return (left, right) {
+    final leftValue = left.data()[field];
+    final rightValue = right.data()[field];
+    final leftDate = leftValue is Timestamp
+        ? leftValue.toDate()
+        : DateTime.fromMillisecondsSinceEpoch(0);
+    final rightDate = rightValue is Timestamp
+        ? rightValue.toDate()
+        : DateTime.fromMillisecondsSinceEpoch(0);
+    final comparison = leftDate.compareTo(rightDate);
+    return descending ? -comparison : comparison;
+  };
 }
 
 const _nutrientCycleNodes = [
